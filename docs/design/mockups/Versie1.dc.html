@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>EazyRecipes versie 1</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F6F7F8; font-family: Inter, system-ui, sans-serif; color: #1B1F24">
+
+<sc-if value="{{isLibrary}}" hint-placeholder-val="{{ true }}">
+<div style="height: 772px; overflow-y: auto">
+  <div style="background: {{headerBg}}; padding: 20px 16px 14px; border-bottom: 1px solid #E4E7EB; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+      <div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Bibliotheek</h1>
+        <p style="margin: 4px 0 0; font-size: 14px; color: #5B6470">{{totalLabel}}</p>
+      </div>
+      <button aria-label="Favorieten" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #D5DAE0; background: #FFFFFF; color: #1B1F24; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>
+      </button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; background: #FFFFFF; border: 1px solid #D5DAE0; border-radius: 14px; color: #5B6470">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none"><path d="M4 11a7 7 0 1 0 14 0a7 7 0 1 0 -14 0 M20 20l-4.2-4.2"></path></svg>
+      <input type="search" aria-label="Zoeken" placeholder="Zoek op recept of ingrediënt" value="{{q}}" onChange="{{onQuery}}" style="flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 400 16px Inter, system-ui, sans-serif; color: #1B1F24">
+    </div>
+    <div style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px">
+      <sc-for list="{{chips}}" as="c" hint-placeholder-count="7">
+        <button aria-pressed="{{c.pressed}}" onClick="{{c.pick}}" style="flex: none; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid {{c.border}}; background: {{c.bg}}; color: {{c.fg}}; font: 600 14px Inter, system-ui, sans-serif; cursor: pointer">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{c.icon}}"></path></svg>
+          <span>{{c.label}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  <button onClick="{{goPantry}}" style="margin: 16px 16px 0; width: calc(100% - 32px); display: flex; align-items: center; gap: 12px; padding: 14px; background: #FFFFFF; border: 1px solid #E4E7EB; border-radius: 16px; text-align: left; cursor: pointer; font-family: inherit; color: #1B1F24">
+    <span style="flex: none; width: 44px; height: 44px; border-radius: 12px; background: #EEF0F2; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 10h16l-1.5 9h-13z M8 10l4-6l4 6"></path></svg>
+    </span>
+    <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 15px; font-weight: 700">Wat heb ik in huis?</span>
+      <span style="font-size: 13px; color: #5B6470">Vind recepten met wat je nog hebt</span>
+    </span>
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none"><path d="M5 12h14 M13 6l6 6l-6 6"></path></svg>
+  </button>
+
+  <div style="display: flex; align-items: center; gap: 8px; padding: 20px 16px 10px">
+    <span style="width: 28px; height: 28px; border-radius: 8px; background: {{ctx.tint}}; color: {{ctx.accent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{ctx.icon}}"></path></svg>
+    </span>
+    <h2 style="margin: 0; font-size: 17px; font-weight: 700">{{sectionTitle}}</h2>
+    <span style="margin-left: auto; font-size: 13px; color: #5B6470">{{countLabel}}</span>
+  </div>
+
+  <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+    <p style="margin: 8px 16px 24px; padding: 24px; background: #FFFFFF; border: 1px dashed #D5DAE0; border-radius: 16px; font-size: 14px; color: #5B6470; text-align: center">Niets gevonden. Probeer een ander woord of filter.</p>
+  </sc-if>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 16px 24px">
+    <sc-for list="{{cards}}" as="r" hint-placeholder-count="6">
+      <button onClick="{{r.open}}" style="display: flex; flex-direction: column; padding: 0; background: #FFFFFF; border: 1px solid #E4E7EB; border-radius: 16px; overflow: hidden; text-align: left; cursor: pointer; font-family: inherit; color: #1B1F24">
+        <span style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 116px; background: {{r.tint}}; color: {{r.accent}}">
+          <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55"><path d="{{r.icon}}"></path></svg>
+          <span style="position: absolute; left: 8px; top: 8px; display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 999px; background: #FFFFFF; color: {{r.accent}}; font-size: 12px; font-weight: 700">
+            <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="{{r.icon}}"></path></svg>
+            <span>{{r.catLabel}}</span>
+          </span>
+        </span>
+        <span style="padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px">
+          <span style="font-size: 15px; font-weight: 700; line-height: 1.25">{{r.title}}</span>
+          <span style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #5B6470">
+            <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3 2"></path></svg>
+            <span>{{r.time}}</span>
+          </span>
+          <span style="font-size: 12px; color: #5B6470">{{r.source}}</span>
+        </span>
+      </button>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isCollections}}" hint-placeholder-val="{{ false }}">
+<div style="height: 772px; overflow-y: auto">
+  <div style="background: #FFFFFF; padding: 20px 16px 16px; border-bottom: 1px solid #E4E7EB">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Collecties</h1>
+    <p style="margin: 4px 0 0; font-size: 14px; color: #5B6470">Eigen groepen, een recept kan in meerdere</p>
+  </div>
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <sc-for list="{{collections}}" as="col" hint-placeholder-count="4">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 12px; background: #FFFFFF; border: 1px solid #E4E7EB; border-radius: 18px">
+        <span style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%">
+          <sc-for list="{{col.tiles}}" as="t" hint-placeholder-count="3">
+            <span style="height: 76px; border-radius: 10px; background: {{t.tint}}; color: {{t.accent}}; display: flex; align-items: center; justify-content: center">
+              <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6"><path d="{{t.icon}}"></path></svg>
+            </span>
+          </sc-for>
+        </span>
+        <span style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+          <span style="font-size: 16px; font-weight: 700">{{col.name}}</span>
+          <span style="font-size: 13px; color: #5B6470">{{col.count}}</span>
+        </span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isPlaceholder}}" hint-placeholder-val="{{ false }}">
+<div style="height: 772px; display: flex; flex-direction: column">
+  <div style="background: #FFFFFF; padding: 20px 16px 16px; border-bottom: 1px solid #E4E7EB">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">{{placeholderTitle}}</h1>
+  </div>
+  <p style="margin: 16px; padding: 20px; background: #FFFFFF; border: 1px dashed #C9CFD6; border-radius: 18px; font-size: 15px; color: #5B6470; line-height: 1.5">Dit scherm was in versie 1 nog een simpele lijst.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{showNav}}" hint-placeholder-val="{{ true }}">
+<nav aria-label="Hoofdmenu" style="position: absolute; left: 0; right: 0; bottom: 0; height: 72px; box-sizing: border-box; padding: 0 8px; background: #FFFFFF; border-top: 1px solid #E4E7EB; display: flex; align-items: center; justify-content: space-around">
+  <sc-for list="{{navLeft}}" as="n" hint-placeholder-count="2">
+    <button onClick="{{n.go}}" aria-current="{{n.current}}" style="width: 72px; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: {{n.color}}; font: 600 11px Inter, system-ui, sans-serif; cursor: pointer">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{n.icon}}"></path></svg>
+      <span>{{n.label}}</span>
+    </button>
+  </sc-for>
+  <button onClick="{{goAdd}}" aria-label="Recept toevoegen" style="width: 56px; height: 56px; border-radius: 18px; border: 0; background: {{navAccent}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><path d="M12 5v14 M5 12h14"></path></svg>
+  </button>
+  <sc-for list="{{navRight}}" as="n" hint-placeholder-count="2">
+    <button onClick="{{n.go}}" aria-current="{{n.current}}" style="width: 72px; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: {{n.color}}; font: 600 11px Inter, system-ui, sans-serif; cursor: pointer">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="{{n.icon}}"></path></svg>
+      <span>{{n.label}}</span>
+    </button>
+  </sc-for>
+</nav>
+</sc-if>
+
+<sc-if value="{{isDetail}}" hint-placeholder-val="{{ false }}">
+<div style="height: 756px; overflow-y: auto; background: #FFFFFF">
+  <div style="position: relative; height: 240px; background: {{d.tint}}; color: {{d.accent}}; display: flex; align-items: center; justify-content: center">
+    <svg width="88" height="88" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.5"><path d="{{d.icon}}"></path></svg>
+    <span style="position: absolute; right: 12px; bottom: 12px; padding: 4px 8px; border-radius: 8px; background: #FFFFFF; font-size: 12px; color: #5B6470">Foto van de bron</span>
+    <button onClick="{{goBack}}" aria-label="Terug" style="position: absolute; left: 16px; top: 16px; width: 44px; height: 44px; border-radius: 999px; border: 0; background: #FFFFFF; color: #1B1F24; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.14)">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M15 5l-7 7l7 7"></path></svg>
+    </button>
+  </div>
+  <div style="padding: 20px 20px 28px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: {{d.tint}}; color: {{d.accent}}; font-size: 13px; font-weight: 700">
+        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="{{d.icon}}"></path></svg>
+        <span>{{d.catLabel}}</span>
+      </span>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; letter-spacing: -0.01em">{{d.title}}</h1>
+      <span style="font-size: 14px; color: #5B6470">{{d.time}} · {{d.source}}</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; background: #F6F7F8; border-radius: 16px">
+      <span style="font-size: 15px; font-weight: 600">Porties</span>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <button onClick="{{dec}}" aria-label="Minder porties" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #D5DAE0; background: #FFFFFF; color: #1B1F24; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round"><path d="M5 12h14"></path></svg>
+        </button>
+        <span style="min-width: 24px; text-align: center; font-size: 19px; font-weight: 800">{{servings}}</span>
+        <button onClick="{{inc}}" aria-label="Meer porties" style="width: 44px; height: 44px; border-radius: 12px; border: 0; background: {{d.accent}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round"><path d="M12 5v14 M5 12h14"></path></svg>
+        </button>
+      </div>
+    </div>
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0 0 4px; font-size: 18px; font-weight: 800">Ingrediënten</h2>
+      <sc-for list="{{ings}}" as="g" hint-placeholder-count="6">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px; border-bottom: 1px solid #EEF0F2; font-size: 15px">
+          <span style="flex: none; min-width: 72px; font-weight: 700">{{g.amount}}</span>
+          <span>{{g.name}}</span>
+        </div>
+      </sc-for>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 18px; font-weight: 800">Bereiding</h2>
+      <sc-for list="{{steps}}" as="st" hint-placeholder-count="4">
+        <div style="display: flex; gap: 12px">
+          <span style="flex: none; width: 28px; height: 28px; border-radius: 999px; background: {{d.tint}}; color: {{d.accent}}; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center">{{st.n}}</span>
+          <p style="margin: 3px 0 0; font-size: 15px; line-height: 1.55">{{st.text}}</p>
+        </div>
+      </sc-for>
+    </section>
+  </div>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 88px; box-sizing: border-box; padding: 16px 20px; background: #FFFFFF; border-top: 1px solid #E4E7EB; display: flex">
+  <button onClick="{{startCook}}" style="flex: 1; height: 56px; border-radius: 16px; border: 0; background: {{d.accent}}; color: #FFFFFF; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer">Start kookmodus</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isCook}}" hint-placeholder-val="{{ false }}">
+<div style="height: 844px; display: flex; flex-direction: column; background: #FFFFFF">
+  <div style="display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px">
+    <button onClick="{{goBack}}" aria-label="Kookmodus sluiten" style="flex: none; width: 44px; height: 44px; border-radius: 999px; border: 0; background: #F0F2F4; color: #1B1F24; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round"><path d="M6 6l12 12 M18 6L6 18"></path></svg>
+    </button>
+    <div style="flex: 1; min-width: 0">
+      <div style="font-size: 13px; color: #5B6470">Kookmodus</div>
+      <div style="font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.title}}</div>
+    </div>
+  </div>
+  <div style="display: flex; gap: 6px; padding: 0 16px">
+    <sc-for list="{{progress}}" as="pg" hint-placeholder-count="4">
+      <span style="flex: 1; height: 6px; border-radius: 999px; background: {{pg.bg}}"></span>
+    </sc-for>
+  </div>
+  <div style="flex: 1; padding: 28px 24px 20px; display: flex; flex-direction: column; gap: 18px">
+    <span style="font-size: 15px; font-weight: 800; color: {{d.accent}}">{{stepLabel}}</span>
+    <p style="margin: 0; font-size: 27px; line-height: 1.4; font-weight: 600">{{stepText}}</p>
+  </div>
+  <div style="display: flex; gap: 12px; padding: 16px 16px 20px; border-top: 1px solid #E4E7EB">
+    <button onClick="{{prevStep}}" style="flex: 1; height: 64px; border-radius: 18px; border: 1px solid #D5DAE0; background: #FFFFFF; color: #1B1F24; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">{{prevLabel}}</button>
+    <button onClick="{{nextStep}}" style="flex: 2; height: 64px; border-radius: 18px; border: 0; background: {{d.accent}}; color: #FFFFFF; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer">{{nextLabel}}</button>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+const IC = {
+  grid: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  meat: 'M6 8c2-4 9-5 12-2s2 9-3 11c-3 1.2-5 0-7 .5s-3 1-4-1s0-6 2-8.5z M14 10.5a1.5 1.5 0 1 0 0.01 0',
+  fish: 'M3 12c3-5 9-6 13-3l5-3v12l-5-3c-4 3-10 2-13-3z M8 11.5h.01',
+  leaf: 'M5 19c0-8 6-14 15-14c0 9-6 15-14 15 M5 19l8-8',
+  sprout: 'M12 20v-8 M12 12c0-4-3-6-7-6c0 4 3 6 7 6z M12 10c0-3 2.5-5 6.5-5c0 3.5-2.5 5-6.5 5z',
+  cake: 'M4 20h16 M5 20v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6 M5 16c2 1 3-1 4.7 0s3.3 1 4.6 0s2.7-1 4.7 0 M12 12V8 M12 5h.01',
+  bolt: 'M13 3L5 13h6l-1 8l8-10h-6z',
+  book: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1 -3-3z M5 17a3 3 0 0 1 3-3h11',
+  compass: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M15.5 8.5l-2 5l-5 2l2-5z',
+  folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2-2z',
+  menu: 'M4 7h16 M4 12h16 M4 17h16'
+};
+const CTX = {
+  alles: { label: 'Alles', accent: '#24292F', tint: '#EEF0F2', icon: IC.grid },
+  vlees: { label: 'Vlees', accent: '#C62828', tint: '#FDECEA', icon: IC.meat },
+  vis:   { label: 'Vis', accent: '#1565C0', tint: '#E8F1FB', icon: IC.fish },
+  vega:  { label: 'Vega', accent: '#2E7D32', tint: '#EAF4EA', icon: IC.leaf },
+  vegan: { label: 'Vegan', accent: '#00796B', tint: '#E3F3F1', icon: IC.sprout },
+  zoet:  { label: 'Zoet & bakken', accent: '#AD1457', tint: '#FCE8F0', icon: IC.cake },
+  snel:  { label: 'Snel', accent: '#A84A00', tint: '#FDF0E3', icon: IC.bolt }
+};
+const CTX_ORDER = ['alles', 'vlees', 'vis', 'vega', 'vegan', 'zoet', 'snel'];
+function ing(a, u, n) { return { a: a, u: u, n: n }; }
+const RECIPES = [
+  { title: 'Stoofvlees met friet', cat: 'vlees', min: 180, serv: 4, source: 'leukerecepten.nl',
+    ing: [ing(800, 'g', 'runderlappen'), ing(2, '', 'uien'), ing(330, 'ml', 'donker bier'), ing(2, 'el', 'appelstroop')],
+    steps: ['Snijd het vlees in grove blokken en bestrooi met peper en zout.', 'Bak het vlees rondom bruin.', 'Fruit de uien en voeg vlees, bier en appelstroop toe.', 'Laat 2,5 uur zachtjes stoven.'] },
+  { title: 'Zalm uit de oven met groenten', cat: 'vis', min: 30, serv: 2, source: 'eefkooktzo.nl',
+    ing: [ing(2, '', 'zalmfilets'), ing(300, 'g', 'krieltjes'), ing(1, '', 'courgette'), ing(2, 'el', 'olijfolie')],
+    steps: ['Verwarm de oven voor op 200 °C.', 'Snijd de groenten in stukken.', 'Bak krieltjes en groenten 10 minuten voor.', 'Leg de zalm erbij en bak nog 15 minuten.'] },
+  { title: 'Pasta pesto met spinazie', cat: 'vega', min: 20, serv: 2, source: 'Eigen recept',
+    ing: [ing(200, 'g', 'pasta'), ing(3, 'el', 'groene pesto'), ing(150, 'g', 'spinazie')],
+    steps: ['Kook de pasta.', 'Laat de spinazie slinken in de warme pasta.', 'Roer de pesto erdoor.'] },
+  { title: 'Appelkruimeltaart', cat: 'zoet', min: 75, serv: 8, source: 'leukerecepten.nl',
+    ing: [ing(250, 'g', 'zelfrijzend bakmeel'), ing(150, 'g', 'boter'), ing(125, 'g', 'basterdsuiker'), ing(600, 'g', 'appels')],
+    steps: ['Verwarm de oven voor op 180 °C.', 'Kneed een kruimelig deeg.', 'Vul de vorm met deeg en appel.', 'Bak de taart in 60 minuten goudbruin.'] },
+  { title: 'Kip kerrie', cat: 'vlees', min: 35, serv: 4, source: 'eefkooktzo.nl',
+    ing: [ing(500, 'g', 'kipfilet'), ing(1, '', 'ui'), ing(2, 'el', 'kerriepoeder'), ing(250, 'ml', 'kokosmelk')],
+    steps: ['Kook de rijst.', 'Snijd kip en ui in blokjes.', 'Bak de kip met kerriepoeder.', 'Voeg de kokosmelk toe en laat 10 minuten koken.'] },
+  { title: 'Linzencurry', cat: 'vegan', min: 40, serv: 4, source: 'Foto uit kookboek',
+    ing: [ing(250, 'g', 'rode linzen'), ing(400, 'ml', 'kokosmelk'), ing(1, 'blik', 'tomatenblokjes')],
+    steps: ['Fruit ui en knoflook.', 'Voeg linzen, tomaat en kokosmelk toe.', 'Laat 25 minuten zachtjes koken.'] },
+  { title: 'Shakshuka', cat: 'vega', min: 25, serv: 2, source: 'leukerecepten.nl',
+    ing: [ing(4, '', 'eieren'), ing(1, 'blik', 'tomatenblokjes'), ing(1, '', 'rode paprika')],
+    steps: ['Fruit ui en paprika.', 'Laat de tomaat 10 minuten inkoken.', 'Breek de eieren erin en laat garen.'] },
+  { title: 'Kibbeling met remoulade', cat: 'vis', min: 20, serv: 2, source: 'Eigen recept',
+    ing: [ing(300, 'g', 'witvis'), ing(75, 'g', 'bloem'), ing(4, 'el', 'remouladesaus')],
+    steps: ['Snijd de vis in stukken.', 'Maak een beslag.', 'Frituur de vis 4 minuten.'] }
+];
+const COLLECTIONS = [
+  { name: 'Snel doordeweeks', ids: [2, 6, 7] }, { name: 'Favorieten', ids: [0, 3, 4] },
+  { name: 'Bakken', ids: [3] }, { name: 'Kerst', ids: [0, 1] }
+];
+function fmtAmount(n, u) {
+  let s;
+  if (u === 'g' || u === 'ml') s = String(n >= 100 ? Math.round(n / 10) * 10 : Math.max(5, Math.round(n / 5) * 5));
+  else { const q = Math.round(n * 2) / 2; s = q % 1 ? Math.floor(q) + '½' : String(q); }
+  return u ? s + ' ' + u : s;
+}
+function matchesCtx(r, key) {
+  if (key === 'alles') return true;
+  if (key === 'snel') return r.min <= 30;
+  if (key === 'vega') return r.cat === 'vega' || r.cat === 'vegan';
+  return r.cat === key;
+}
+function timeLabel(min) { return min < 60 ? min + ' min' : Math.floor(min / 60) + ' u ' + (min % 60 ? (min % 60) + ' min' : ''); }
+
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const screen = s.screen || 'library';
+    const ctxKey = s.ctx || 'alles';
+    const ctx = CTX[ctxKey];
+    const rIdx = s.recipe || 0;
+    const r = RECIPES[rIdx];
+    const rc = CTX[r.cat];
+    const servings = s.servings || r.serv;
+    const step = s.step || 0;
+    const q = (s.q || '').trim().toLowerCase();
+    const go = (scr, extra) => this.setState(Object.assign({ screen: scr }, extra || {}));
+    const cards = [];
+    RECIPES.forEach((rec, i) => {
+      if (!matchesCtx(rec, ctxKey)) return;
+      if (q && rec.title.toLowerCase().indexOf(q) < 0) return;
+      const c = CTX[rec.cat];
+      cards.push({ title: rec.title, time: timeLabel(rec.min), source: rec.source, catLabel: c.label, icon: c.icon, tint: c.tint, accent: c.accent,
+        open: () => go('detail', { recipe: i, servings: null, step: 0 }) });
+    });
+    const navAccent = screen === 'library' ? ctx.accent : '#24292F';
+    const navItem = (key, label, icon) => ({ label: label, icon: icon, current: screen === key ? 'page' : 'false',
+      color: screen === key ? navAccent : '#5B6470', go: () => go(key) });
+    return {
+      isLibrary: screen === 'library', isDetail: screen === 'detail', isCook: screen === 'cook', isCollections: screen === 'collections',
+      isPlaceholder: screen === 'discover' || screen === 'more' || screen === 'add' || screen === 'pantry',
+      placeholderTitle: { discover: 'Ontdekken', more: 'Meer', add: 'Recept toevoegen', pantry: 'Wat heb ik in huis?' }[screen] || '',
+      showNav: screen !== 'detail' && screen !== 'cook',
+      ctx: ctx, headerBg: ctxKey === 'alles' ? '#FFFFFF' : ctx.tint, q: s.q || '',
+      onQuery: (e) => this.setState({ q: e.target.value }),
+      totalLabel: RECIPES.length + ' recepten in je bibliotheek',
+      sectionTitle: ctxKey === 'alles' ? 'Recent toegevoegd' : ctx.label,
+      countLabel: cards.length === 1 ? '1 recept' : cards.length + ' recepten',
+      cards: cards, isEmpty: cards.length === 0,
+      chips: CTX_ORDER.map((k) => {
+        const c = CTX[k]; const on = k === ctxKey;
+        return { label: k === 'snel' ? 'Snel (≤ 30 min)' : c.label, icon: c.icon, pressed: on ? 'true' : 'false',
+          bg: on ? c.accent : '#FFFFFF', fg: on ? '#FFFFFF' : '#3A424D', border: on ? c.accent : '#D5DAE0', pick: () => this.setState({ ctx: k }) };
+      }),
+      goPantry: () => go('pantry'), goAdd: () => go('add'),
+      navAccent: navAccent,
+      navLeft: [navItem('library', 'Bibliotheek', IC.book), navItem('discover', 'Ontdekken', IC.compass)],
+      navRight: [navItem('collections', 'Collecties', IC.folder), navItem('more', 'Meer', IC.menu)],
+      collections: COLLECTIONS.map((col) => ({ name: col.name, count: col.ids.length + ' recepten',
+        tiles: [0, 1, 2].map((j) => { const id = col.ids[j]; if (id == null) return { tint: '#F0F2F4', accent: '#C9CFD6', icon: 'M12 5v14 M5 12h14' };
+          const c = CTX[RECIPES[id].cat]; return { tint: c.tint, accent: c.accent, icon: c.icon }; }) })),
+      d: { title: r.title, accent: rc.accent, tint: rc.tint, icon: rc.icon, catLabel: rc.label, time: timeLabel(r.min), source: r.source },
+      servings: servings,
+      dec: () => this.setState({ servings: Math.max(1, servings - 1) }),
+      inc: () => this.setState({ servings: Math.min(24, servings + 1) }),
+      ings: r.ing.map((g) => ({ amount: fmtAmount(g.a * servings / r.serv, g.u), name: g.n })),
+      steps: r.steps.map((t, i) => ({ n: i + 1, text: t })),
+      goBack: () => go(screen === 'cook' ? 'detail' : 'library'),
+      startCook: () => go('cook', { step: 0 }),
+      progress: r.steps.map((t, i) => ({ bg: i <= step ? rc.accent : '#E4E7EB' })),
+      stepLabel: 'Stap ' + (step + 1) + ' van ' + r.steps.length,
+      stepText: r.steps[step],
+      prevLabel: step === 0 ? 'Terug' : 'Vorige',
+      nextLabel: step === r.steps.length - 1 ? 'Klaar' : 'Volgende',
+      prevStep: () => (step === 0 ? go('detail') : this.setState({ step: step - 1 })),
+      nextStep: () => (step === r.steps.length - 1 ? go('detail') : this.setState({ step: step + 1 }))
+    };
+  }
+}
+</script>
+</body>
+</html>

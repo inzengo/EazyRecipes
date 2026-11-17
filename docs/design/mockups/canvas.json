@@ -1,0 +1,63 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Kleuren.dc.html": {
+      "h": 844,
+      "title": "Kleursysteem",
+      "w": 960,
+      "x": 1061,
+      "y": 716
+    },
+    "Main.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "Prototype (klikbaar)",
+      "w": 390,
+      "x": 504,
+      "y": -19
+    },
+    "Overzicht.dc.html": {
+      "h": 1980,
+      "title": "Alle schermen naast elkaar",
+      "w": 2206,
+      "x": -1312,
+      "y": 979
+    },
+    "Versie1.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "Versie 1 (oud, ter vergelijking)",
+      "w": 390,
+      "x": 34,
+      "y": -19
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-17T20:40:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "uitleg": {
+      "size": 24,
+      "text": "Zo gebruik je dit:\n\n• Prototype: druk op Play en tik rond. Kies een categorie (Vlees, Vis…) en zie de kleur wisselen. Filters, hartjes, collecties, delen en de timer werken.\n\n• Versie 1 (links): de eerste, braaf-basic versie, ter vergelijking.\n\n• Alle schermen: hetzelfde prototype, in verschillende standen naast elkaar.\n\n• Opmerkingen? Zet een comment op het scherm zelf.",
+      "w": 340,
+      "x": 1510,
+      "y": 0
+    }
+  },
+  "order": [
+    "Versie1.dc.html",
+    "Main.dc.html",
+    "Kleuren.dc.html",
+    "Overzicht.dc.html"
+  ],
+  "pages": [],
+  "title": "EazyRecipes Mockups"
+}

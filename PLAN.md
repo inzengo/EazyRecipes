@@ -69,14 +69,17 @@ Rust is bewust niet gekozen; de importlogica blijft een losse module (`import/`)
 - **Delen niveau C**: gedeelde collecties met accounts + sync
 - Misschien: gekookt-log + rating, weekmenu, timers uit stappen, AI-extractie voor sites zonder JSON-LD
 
-## Design-richting
+## Design (v0.2, vastgesteld)
 
-- **Basis**: wit en lichtgrijs, rustig, veel ruimte, de foto's van de recepten zijn het
-  belangrijkste beeld.
-- **Contextuele accentkleur**: de accentkleur volgt waar je mee bezig bent. Voorbeeld: filter op vlees →
-  rood, vega → groen. Zie het voorstel hieronder; dit wordt verder uitgewerkt in de design-sessie.
-- Kleur nooit als enige signaal: altijd ook een icoon of label (leesbaarheid, kleurenblindheid).
-- Foutmeldingen krijgen een eigen kleur/vorm, zodat "vlees-rood" niet als fout leest.
+Volledige uitwerking: [STATUS.md](STATUS.md#design-besluiten-v02) en de mockups in `docs/design/mockups/`
+(klikbaar canvas: https://claude.ai/artifact/6UDLioCa2cawBMaDYd1Wjm).
+
+- Basis: wit/grijs + inkt-zwart. Foto's zijn het belangrijkste beeld.
+- Contextkleur: felle vlakken per categorie met zwarte tekst; de kop, de navigatie, het recept en de kookmodus kleuren mee.
+- Bricolage Grotesque + Figtree; Phosphor-iconen (fill).
+- Kleur nooit als enige signaal: altijd ook een icoon of label. Foutmeldingen krijgen een eigen vorm.
+- Navigatie: Recepten · In huis · Ontdek · Meer, plus een zwevende +-knop.
+- Bibliotheek-tabs: Recepten · Favorieten · Collecties. Filters in een bottom sheet.
 
 ## Architectuur
 
@@ -108,20 +111,23 @@ Alle tabellen: `id` (UUID), `createdAt`, `updatedAt`, `deletedAt?`.
 - [x] Toolchain via CLI op E: (zie `docs/SETUP-WINDOWS.md`)
 - [x] Eerste APK bouwen
 
-### Fase 1 — Design (nu)
-- Schermen en navigatie vastleggen (mockups) vóór het bouwen
-- Kleursysteem met contextuele accenten, typografie, kaartstijl
+### Fase 1 — Design ✅
+- [x] Mockups v0.1 (te braaf) → v0.2 (huidige richting), klikbaar prototype
+- [x] Kleursysteem, typografie, iconen, navigatie
+- [x] Favorieten als tab, collecties in de bibliotheek, filter-sheet, "snel"-label op kaarten
 
-### Fase 2 — Data + import
+### Fase 2 — Data + import (volgende)
 - Datamodel + Room, JSON-LD parser met tests op opgeslagen echte pagina's, WebView-fallback
-- Delen-menu, link plakken, meerdere links, voorbeeldscherm
+- Delen-menu, link plakken, voorbeeldscherm
+- Compose-thema volgens design v0.2 (fonts, kleuren, Phosphor-iconen)
 - **Eerste test op de telefoon**
 
 ### Fase 3 — Bibliotheek & vinden
-- Bibliotheek, zoeken, filters, collecties, "Wat heb ik in huis?"
+- Bibliotheek (tabs Recepten/Favorieten/Collecties), zoeken, filter-sheet, categorie-tegels
+- Collecties maken en beheren, "In huis"
 
 ### Fase 4 — Koken & delen A
-- Detail, porties, kookmodus; delen als tekst/bestand; back-up
+- Detail, porties, notities, kookmodus met timers; delen als tekst/`.eazy`-bestand; back-up
 
 ### Fase 5 — Overige import
 - Bladwijzers-bestand, OCR, handmatig invoeren, dubbele recepten
@@ -129,5 +135,4 @@ Alle tabellen: `id` (UUID), `createdAt`, `updatedAt`, `deletedAt?`.
 Daarna: boodschappenlijst, Ontdekken, delen B → C.
 
 ## Open vragen
-- Precieze accentkleuren per context (design-sessie)
 - Welke sites naast leukerecepten.nl en eefkooktzo.nl voor Ontdekken?

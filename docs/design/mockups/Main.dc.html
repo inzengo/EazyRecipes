@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>EazyRecipes prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Figtree:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F2F2F0; font-family: Figtree, system-ui, sans-serif; color: #121212">
+
+<!-- ================= BIBLIOTHEEK ================= -->
+<sc-if value="{{isLibrary}}" hint-placeholder-val="{{ true }}">
+<div style="height: 844px; overflow-y: auto">
+  <div style="position: relative; overflow: hidden; background: {{hero.bg}}; padding: 20px 20px 22px; border-radius: 0 0 36px 36px; display: flex; flex-direction: column; gap: 14px">
+    <svg viewBox="0 0 256 256" aria-hidden="true" style="position: absolute; right: -46px; top: -18px; width: 240px; height: 240px; fill: {{hero.mark}}; opacity: {{hero.markOpacity}}"><path d="{{hero.icon}}"></path></svg>
+    <div style="position: relative; display: flex; align-items: center; justify-content: space-between">
+      <span style="display: flex; align-items: center; gap: 8px; font: 800 15px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.01em">
+        <span style="width: 26px; height: 26px; border-radius: 9px; background: #121212; color: {{hero.logo}}; display: flex; align-items: center; justify-content: center">
+          <svg viewBox="0 0 256 256" width="16" height="16" aria-hidden="true" style="fill: currentColor"><path d="{{icons.forkKnife}}"></path></svg>
+        </span>
+        <span>EazyRecipes</span>
+      </span>
+    </div>
+    <div style="position: relative; display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font: 800 38px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -0.035em; white-space: pre-line">{{hero.title}}</h1>
+      <p style="margin: 0; font-size: 14px; font-weight: 600; opacity: 0.78">{{hero.sub}}</p>
+    </div>
+    <div style="position: relative; display: flex; gap: 8px">
+      <div style="flex: 1; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; background: #FFFFFF; border-radius: 999px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); color: #5E6066">
+        <svg viewBox="0 0 256 256" width="20" height="20" aria-hidden="true" style="fill: currentColor; flex: none"><path d="{{icons.search}}"></path></svg>
+        <input type="search" aria-label="Zoeken" placeholder="Recept of ingrediënt…" value="{{q}}" onChange="{{onQuery}}" style="flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 500 16px Figtree, system-ui, sans-serif; color: #121212">
+      </div>
+      <button onClick="{{openFilters}}" aria-label="Filters openen" style="position: relative; flex: none; width: 52px; height: 52px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round"><path d="M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 5v4 M9 15v4"></path></svg>
+        <sc-if value="{{hasFilters}}" hint-placeholder-val="{{ false }}">
+          <span style="position: absolute; right: -3px; top: -3px; min-width: 22px; height: 22px; box-sizing: border-box; padding: 0 6px; border-radius: 999px; border: 2px solid #FFFFFF; background: #9B8CFF; color: #121212; font: 800 11px/18px Figtree, system-ui, sans-serif; text-align: center">{{filterCount}}</span>
+        </sc-if>
+      </button>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 6px; overflow-x: auto; padding: 18px 16px 4px">
+    <sc-for list="{{cats}}" as="c" hint-placeholder-count="7">
+      <button aria-pressed="{{c.pressed}}" onClick="{{c.pick}}" style="flex: none; width: 82px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 0; background: none; border: 0; cursor: pointer; font-family: Figtree, system-ui, sans-serif; color: #121212">
+        <span style="width: 68px; height: 68px; border-radius: 24px; background: {{c.bg}}; color: {{c.fg}}; display: flex; align-items: center; justify-content: center; box-shadow: {{c.ring}}; transform: {{c.lift}}">
+          <svg viewBox="0 0 256 256" width="32" height="32" aria-hidden="true" style="fill: currentColor"><path d="{{c.icon}}"></path></svg>
+        </span>
+        <span style="font-size: 13px; font-weight: {{c.weight}}">{{c.label}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <div style="padding: 14px 20px 14px">
+    <div role="tablist" aria-label="Weergave" style="display: flex; padding: 4px; background: #E3E3DF; border-radius: 999px">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+        <button role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="flex: 1; height: 42px; padding: 0 8px; border-radius: 999px; border: 0; background: {{t.bg}}; color: {{t.fg}}; display: flex; align-items: center; justify-content: center; gap: 6px; font: 700 14px Figtree, system-ui, sans-serif; cursor: pointer">
+          <svg viewBox="0 0 256 256" width="15" height="15" aria-hidden="true" style="fill: currentColor; flex: none"><path d="{{t.icon}}"></path></svg>
+          <span>{{t.label}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{hasActive}}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 0 20px 14px">
+      <sc-for list="{{activeChips}}" as="ac" hint-placeholder-count="2">
+        <button onClick="{{ac.clear}}" aria-label="{{ac.aria}}" style="display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 14px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; font: 700 13px Figtree, system-ui, sans-serif; cursor: pointer">
+          <span>{{ac.label}}</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round"><path d="M6 6l12 12 M18 6L6 18"></path></svg>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showRecipes}}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{showFeatured}}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{feat.open}}" style="position: relative; display: block; margin: 0 20px 18px; width: calc(100% - 40px); height: 236px; padding: 0; border: 0; border-radius: 30px; overflow: hidden; background: #DADAD6; text-align: left; cursor: pointer">
+        <img src="{{feat.img}}" alt="" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover">
+        <span style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 38%, rgba(0,0,0,0.74) 100%)"></span>
+        <span style="position: absolute; left: 14px; top: 14px; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; background: #9B8CFF; color: #121212; font: 800 12px Figtree, system-ui, sans-serif">
+          <svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" style="fill: currentColor"><path d="{{icons.sparkle}}"></path></svg>
+          <span>Vanavond misschien?</span>
+        </span>
+        <span style="position: absolute; right: 14px; top: 14px; width: 40px; height: 40px; border-radius: 14px; background: {{feat.vivid}}; color: #121212; display: flex; align-items: center; justify-content: center">
+          <svg viewBox="0 0 256 256" width="22" height="22" aria-hidden="true" style="fill: currentColor"><path d="{{feat.icon}}"></path></svg>
+        </span>
+        <span style="position: absolute; left: 18px; right: 18px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; color: #FFFFFF">
+          <span style="font: 800 26px/1.05 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">{{feat.title}}</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600">
+            <svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" style="fill: currentColor"><path d="{{icons.clock}}"></path></svg>
+            <span>{{feat.meta}}</span>
+          </span>
+        </span>
+      </button>
+    </sc-if>
+
+    <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+      <div style="margin: 0 20px 20px; padding: 28px 20px; background: #FFFFFF; border-radius: 28px; text-align: center; display: flex; flex-direction: column; gap: 6px">
+        <span style="font: 800 20px 'Bricolage Grotesque', sans-serif">{{emptyTitle}}</span>
+        <span style="font-size: 14px; color: #5E6066">{{emptyText}}</span>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; gap: 12px; padding: 0 20px 120px; align-items: flex-start">
+      <sc-for list="{{columns}}" as="col" hint-placeholder-count="2">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <sc-for list="{{col.cards}}" as="r" hint-placeholder-count="3">
+            <div style="position: relative">
+            <button onClick="{{r.open}}" style="width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; font-family: Figtree, system-ui, sans-serif; color: #121212">
+              <span style="position: relative; display: block; width: 100%; height: {{r.h}}; border-radius: 24px; overflow: hidden; background: #DADAD6">
+                <img src="{{r.img}}" alt="" style="display: block; width: 100%; height: 100%; object-fit: cover">
+                <span style="position: absolute; left: 8px; top: 8px; width: 34px; height: 34px; border-radius: 12px; background: {{r.vivid}}; color: #121212; display: flex; align-items: center; justify-content: center">
+                  <svg viewBox="0 0 256 256" width="19" height="19" aria-hidden="true" style="fill: currentColor"><path d="{{r.icon}}"></path></svg>
+                </span>
+                <span style="position: absolute; left: 8px; bottom: 8px; display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 999px; background: {{r.timeBg}}; color: {{r.timeFg}}; font-size: 12px; font-weight: 800">
+                  <svg viewBox="0 0 256 256" width="13" height="13" aria-hidden="true" style="fill: currentColor"><path d="{{r.timeIcon}}"></path></svg>
+                  <span>{{r.timeText}}</span>
+                </span>
+              </span>
+              <span style="padding: 0 4px; font: 800 16px/1.2 'Bricolage Grotesque', sans-serif; letter-spacing: -0.01em">{{r.title}}</span>
+              <span style="padding: 0 4px; margin-top: -4px; font-size: 12px; font-weight: 600; color: #5E6066">{{r.source}}</span>
+            </button>
+            <button onClick="{{r.toggleFav}}" aria-pressed="{{r.favPressed}}" aria-label="{{r.favLabel}}" style="position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; border-radius: 999px; border: 0; background: {{r.favBg}}; color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="fill: {{r.favFill}}; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>
+            </button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showCollections}}" hint-placeholder-val="{{ false }}">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 20px 120px">
+      <sc-for list="{{collections}}" as="cl" hint-placeholder-count="4">
+        <button onClick="{{cl.open}}" style="display: flex; flex-direction: column; gap: 10px; padding: 8px 8px 12px; background: #FFFFFF; border: 0; border-radius: 26px; text-align: left; cursor: pointer; font-family: Figtree, system-ui, sans-serif; color: #121212; box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
+          <span style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 64px 64px; gap: 4px; width: 100%; border-radius: 20px; overflow: hidden">
+            <img src="{{cl.a}}" alt="" style="grid-row: 1 / span 2; width: 100%; height: 100%; object-fit: cover; display: block">
+            <img src="{{cl.b}}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block">
+            <img src="{{cl.c}}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block">
+          </span>
+          <span style="padding: 0 6px; font: 800 16px/1.15 'Bricolage Grotesque', sans-serif">{{cl.name}}</span>
+          <span style="padding: 0 6px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #5E6066">
+            <span>{{cl.count}}</span>
+            <sc-for list="{{cl.dots}}" as="dot" hint-placeholder-count="3">
+              <span style="width: 10px; height: 10px; border-radius: 999px; background: {{dot.bg}}"></span>
+            </sc-for>
+          </span>
+        </button>
+      </sc-for>
+      <button onClick="{{newCollection}}" style="min-height: 196px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: transparent; border: 2px dashed #C9C9C4; border-radius: 26px; cursor: pointer; font: 800 15px 'Bricolage Grotesque', sans-serif; color: #121212">
+        <span style="width: 48px; height: 48px; border-radius: 999px; background: #121212; color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round"><path d="M12 5v14 M5 12h14"></path></svg>
+        </span>
+        <span>Nieuwe collectie</span>
+      </button>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ================= IN HUIS ================= -->
+<sc-if value="{{isPantry}}" hint-placeholder-val="{{ false }}">
+<div style="height: 844px; overflow-y: auto">
+  <div style="position: relative; overflow: hidden; background: #9B8CFF; padding: 28px 20px 24px; border-radius: 0 0 36px 36px; display: flex; flex-direction: column; gap: 8px">
+    <svg viewBox="0 0 256 256" aria-hidden="true" style="position: absolute; right: -36px; top: -8px; width: 210px; height: 210px; fill: #121212; opacity: 0.1"><path d="{{icons.basket}}"></path></svg>
+    <h1 style="position: relative; margin: 0; font: 800 38px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -0.035em">Wat heb je<br>in huis?</h1>
+    <p style="position: relative; margin: 0; font-size: 14px; font-weight: 600; opacity: 0.8">Tik aan wat je hebt, wij zoeken wat je ermee kunt maken.</p>
+  </div>
+  <div style="padding: 18px 20px 120px; display: flex; flex-direction: column; gap: 14px">
+    <span style="font-size: 13px; font-weight: 700; color: #5E6066">{{pantryLabel}}</span>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <sc-for list="{{pantryChips}}" as="pc" hint-placeholder-count="12">
+        <button onClick="{{pc.toggle}}" aria-pressed="{{pc.pressed}}" style="display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px 0 12px; border-radius: 999px; border: 0; background: {{pc.bg}}; color: {{pc.fg}}; font: 700 14px Figtree, system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.06)">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round"><path d="{{pc.glyph}}"></path></svg>
+          <span>{{pc.label}}</span>
+        </button>
+      </sc-for>
+    </div>
+    <h2 style="margin: 10px 0 0; font: 800 22px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">Hiermee kun je aan de slag</h2>
+    <sc-if value="{{noMatches}}" hint-placeholder-val="{{ false }}">
+      <p style="margin: 0; padding: 24px; background: #FFFFFF; border-radius: 24px; font-size: 14px; color: #5E6066; text-align: center">Kies een paar ingrediënten om te beginnen.</p>
+    </sc-if>
+    <sc-for list="{{matches}}" as="m" hint-placeholder-count="4">
+      <button onClick="{{m.open}}" style="display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; background: #FFFFFF; border: 0; border-radius: 26px; text-align: left; cursor: pointer; font-family: Figtree, system-ui, sans-serif; color: #121212; box-shadow: 0 1px 3px rgba(0,0,0,0.06)">
+        <img src="{{m.img}}" alt="" style="flex: none; width: 84px; height: 84px; border-radius: 20px; object-fit: cover; display: block">
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+          <span style="font: 800 16px/1.2 'Bricolage Grotesque', sans-serif">{{m.title}}</span>
+          <span style="display: flex; gap: 4px">
+            <sc-for list="{{m.dots}}" as="dt" hint-placeholder-count="6">
+              <span style="width: 16px; height: 6px; border-radius: 999px; background: {{dt.bg}}"></span>
+            </sc-for>
+          </span>
+          <span style="font-size: 12px; color: #5E6066; line-height: 1.35">{{m.missing}}</span>
+        </span>
+        <span style="flex: none; width: 54px; height: 54px; border-radius: 999px; background: {{m.vivid}}; display: flex; align-items: center; justify-content: center; font: 800 17px 'Bricolage Grotesque', sans-serif">{{m.ratio}}</span>
+      </button>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= ONTDEKKEN ================= -->
+<sc-if value="{{isDiscover}}" hint-placeholder-val="{{ false }}">
+<div style="height: 844px; overflow-y: auto">
+  <div style="position: relative; overflow: hidden; background: #4D9DFF; padding: 28px 20px 24px; border-radius: 0 0 36px 36px; display: flex; flex-direction: column; gap: 8px">
+    <svg viewBox="0 0 256 256" aria-hidden="true" style="position: absolute; right: -36px; top: -8px; width: 210px; height: 210px; fill: #121212; opacity: 0.1"><path d="{{icons.compass}}"></path></svg>
+    <span style="position: relative; align-self: flex-start; height: 28px; padding: 0 12px; display: flex; align-items: center; border-radius: 999px; background: #121212; color: #FFFFFF; font-size: 12px; font-weight: 800">Latere fase</span>
+    <h1 style="position: relative; margin: 0; font: 800 38px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -0.035em">Ontdek<br>nieuwe recepten</h1>
+    <p style="position: relative; margin: 0; font-size: 14px; font-weight: 600; opacity: 0.8">Zoek op je favoriete sites en bewaar met één tik.</p>
+  </div>
+  <div style="padding: 20px 20px 120px; display: flex; flex-direction: column; gap: 12px">
+    <sc-for list="{{sites}}" as="st" hint-placeholder-count="3">
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px; background: #FFFFFF; border-radius: 24px">
+        <span style="flex: none; width: 52px; height: 52px; border-radius: 18px; background: {{st.bg}}; display: flex; align-items: center; justify-content: center; font: 800 22px 'Bricolage Grotesque', sans-serif">{{st.letter}}</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font: 800 16px 'Bricolage Grotesque', sans-serif">{{st.name}}</span>
+          <span style="font-size: 12px; color: #5E6066">{{st.note}}</span>
+        </span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= MEER ================= -->
+<sc-if value="{{isMore}}" hint-placeholder-val="{{ false }}">
+<div style="height: 844px; overflow-y: auto">
+  <div style="padding: 28px 20px 8px">
+    <h1 style="margin: 0; font: 800 38px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -0.035em">Meer</h1>
+  </div>
+  <div style="padding: 12px 20px 120px; display: flex; flex-direction: column; gap: 10px">
+    <sc-for list="{{moreRows}}" as="mr" hint-placeholder-count="4">
+      <button onClick="{{mr.tap}}" style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 16px 10px 10px; background: #FFFFFF; border: 0; border-radius: 22px; text-align: left; cursor: pointer; font: 700 15px Figtree, system-ui, sans-serif; color: #121212">
+        <span style="flex: none; width: 44px; height: 44px; border-radius: 15px; background: {{mr.bg}}; display: flex; align-items: center; justify-content: center">
+          <svg viewBox="0 0 256 256" width="22" height="22" aria-hidden="true" style="fill: #121212"><path d="{{mr.icon}}"></path></svg>
+        </span>
+        <span style="flex: 1">{{mr.label}}</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="fill: none; stroke: #8A8C91; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none"><path d="M9 5l7 7l-7 7"></path></svg>
+      </button>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= ZWEVENDE NAVIGATIE ================= -->
+<sc-if value="{{showNav}}" hint-placeholder-val="{{ true }}">
+<div style="position: absolute; left: 14px; right: 14px; bottom: 16px; display: flex; align-items: center; gap: 8px">
+  <nav aria-label="Hoofdmenu" style="flex: 1; height: 64px; padding: 6px; box-sizing: border-box; background: #121212; border-radius: 999px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 12px 30px rgba(0,0,0,0.28)">
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+      <button onClick="{{n.go}}" aria-current="{{n.current}}" aria-label="{{n.label}}" style="height: 52px; min-width: 52px; padding: {{n.pad}}; border-radius: 999px; border: 0; background: {{n.bg}}; color: {{n.fg}}; display: flex; align-items: center; justify-content: center; gap: 8px; font: 800 14px Figtree, system-ui, sans-serif; cursor: pointer">
+        <svg viewBox="0 0 256 256" width="22" height="22" aria-hidden="true" style="fill: currentColor; flex: none"><path d="{{n.icon}}"></path></svg>
+        <sc-if value="{{n.active}}" hint-placeholder-val="{{ false }}"><span>{{n.label}}</span></sc-if>
+      </button>
+    </sc-for>
+  </nav>
+  <button onClick="{{goAdd}}" aria-label="Recept toevoegen" style="flex: none; width: 64px; height: 64px; border-radius: 999px; border: 0; background: {{fab}}; color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 12px 30px rgba(0,0,0,0.22)">
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round"><path d="M12 5v14 M5 12h14"></path></svg>
+  </button>
+</div>
+</sc-if>
+
+<!-- ================= RECEPTDETAIL ================= -->
+<sc-if value="{{isDetail}}" hint-placeholder-val="{{ false }}">
+<div style="height: 844px; overflow-y: auto; background: #FFFFFF">
+  <div style="position: relative; height: 360px; background: #DADAD6">
+    <img src="{{d.img}}" alt="{{d.title}}" style="display: block; width: 100%; height: 100%; object-fit: cover">
+    <button onClick="{{goBack}}" aria-label="Terug" style="position: absolute; left: 16px; top: 16px; width: 48px; height: 48px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.9); color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round"><path d="M15 5l-7 7l7 7"></path></svg>
+    </button>
+    <div style="position: absolute; right: 16px; top: 16px; display: flex; gap: 8px">
+      <button onClick="{{openShare}}" aria-label="Delen" style="width: 48px; height: 48px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.9); color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg viewBox="0 0 256 256" width="20" height="20" aria-hidden="true" style="fill: currentColor"><path d="{{icons.share}}"></path></svg>
+      </button>
+      <button onClick="{{d.toggleFav}}" aria-pressed="{{d.favPressed}}" aria-label="Favoriet" style="width: 48px; height: 48px; border-radius: 999px; border: 0; background: {{d.favBg}}; color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" style="fill: {{d.favFill}}; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>
+      </button>
+    </div>
+  </div>
+  <div style="position: relative; margin-top: -36px; background: #FFFFFF; border-radius: 34px 34px 0 0; padding: 22px 20px 130px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px">
+      <span style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 8px; border-radius: 999px; background: {{d.vivid}}; font-size: 13px; font-weight: 800">
+        <svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true" style="fill: currentColor"><path d="{{d.icon}}"></path></svg>
+        <span>{{d.catLabel}}</span>
+      </span>
+      <span style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border-radius: 999px; background: #F2F2F0; font-size: 13px; font-weight: 700; color: #3A3B3F">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0 -5.7-5.7l-1 1 M14 10a4 4 0 0 0 -5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>
+        <span>{{d.source}}</span>
+      </span>
+    </div>
+    <h1 style="margin: -4px 0 0; font: 800 32px/1.05 'Bricolage Grotesque', sans-serif; letter-spacing: -0.03em">{{d.title}}</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <sc-for list="{{stats}}" as="sx" hint-placeholder-count="3">
+        <div style="padding: 12px; background: #F2F2F0; border-radius: 22px; display: flex; flex-direction: column; gap: 4px">
+          <svg viewBox="0 0 256 256" width="20" height="20" aria-hidden="true" style="fill: {{d.deep}}"><path d="{{sx.icon}}"></path></svg>
+          <span style="font: 800 19px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">{{sx.value}}</span>
+          <span style="font-size: 12px; font-weight: 600; color: #5E6066">{{sx.label}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 20px; background: {{d.vivid}}; border-radius: 28px">
+      <span style="display: flex; flex-direction: column; gap: 1px">
+        <span style="font: 800 18px 'Bricolage Grotesque', sans-serif">Porties</span>
+        <span style="font-size: 12px; font-weight: 700; opacity: 0.75">{{servingsNote}}</span>
+      </span>
+      <div style="display: flex; align-items: center; gap: 6px">
+        <button onClick="{{dec}}" aria-label="Minder porties" style="width: 48px; height: 48px; border-radius: 999px; border: 0; background: #FFFFFF; color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round"><path d="M5 12h14"></path></svg>
+        </button>
+        <span style="width: 36px; text-align: center; font: 800 24px 'Bricolage Grotesque', sans-serif">{{servings}}</span>
+        <button onClick="{{inc}}" aria-label="Meer porties" style="width: 48px; height: 48px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round"><path d="M12 5v14 M5 12h14"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 6px; font: 800 22px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">Ingrediënten</h2>
+      <sc-for list="{{ings}}" as="g" hint-placeholder-count="6">
+        <button onClick="{{g.toggle}}" aria-pressed="{{g.pressed}}" style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 54px; padding: 6px 0; background: none; border: 0; border-bottom: 1px solid #EFEFEC; text-align: left; cursor: pointer; font: 500 16px Figtree, system-ui, sans-serif; color: {{g.color}}">
+          <span style="flex: none; width: 28px; height: 28px; box-sizing: border-box; border-radius: 999px; border: 2px solid {{g.boxBorder}}; background: {{g.boxBg}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>
+          </span>
+          <span style="flex: none; min-width: 78px; font-weight: 800">{{g.amount}}</span>
+          <span style="text-decoration: {{g.deco}}">{{g.name}}</span>
+        </button>
+      </sc-for>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0 0 2px; font: 800 22px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">Bereiding</h2>
+      <sc-for list="{{steps}}" as="st" hint-placeholder-count="4">
+        <div style="display: flex; gap: 14px; padding: 14px 16px; background: #F2F2F0; border-radius: 22px">
+          <span style="flex: none; font: 800 24px/1 'Bricolage Grotesque', sans-serif; color: {{d.deep}}">{{st.n}}</span>
+          <p style="margin: 0; font-size: 15px; line-height: 1.55">{{st.text}}</p>
+        </div>
+      </sc-for>
+    </section>
+
+    <label style="display: flex; flex-direction: column; gap: 8px; padding: 16px; background: #FFFFFF; border: 2px dashed #D4D4CF; border-radius: 22px; cursor: text">
+      <span style="display: flex; align-items: center; gap: 8px; font: 700 14px Figtree, system-ui, sans-serif; color: #5E6066">
+        <svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true" style="fill: currentColor; flex: none"><path d="{{icons.pencil}}"></path></svg>
+        <span>Mijn notitie</span>
+      </span>
+      <textarea rows="2" placeholder="Bijv. volgende keer minder suiker" value="{{note}}" onChange="{{onNote}}" style="border: 0; outline: none; resize: none; background: transparent; font: 500 15px/1.5 Figtree, system-ui, sans-serif; color: #121212"></textarea>
+    </label>
+  </div>
+</div>
+<div style="position: absolute; left: 16px; right: 16px; bottom: 16px">
+  <button onClick="{{startCook}}" style="width: 100%; height: 68px; box-sizing: border-box; padding: 0 8px 0 26px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; display: flex; align-items: center; gap: 12px; font: 800 18px 'Bricolage Grotesque', sans-serif; cursor: pointer; box-shadow: 0 12px 30px rgba(0,0,0,0.28)">
+    <span style="flex: 1; text-align: left">Start kookmodus</span>
+    <span style="width: 52px; height: 52px; border-radius: 999px; background: {{d.vivid}}; color: #121212; display: flex; align-items: center; justify-content: center">
+      <svg viewBox="0 0 256 256" width="22" height="22" aria-hidden="true" style="fill: currentColor"><path d="{{icons.play}}"></path></svg>
+    </span>
+  </button>
+</div>
+</sc-if>
+
+<!-- ================= KOOKMODUS ================= -->
+<sc-if value="{{isCook}}" hint-placeholder-val="{{ false }}">
+<div style="position: relative; overflow: hidden; height: 844px; display: flex; flex-direction: column; background: {{d.vivid}}; color: #121212">
+  <svg viewBox="0 0 256 256" aria-hidden="true" style="position: absolute; right: -90px; bottom: 120px; width: 340px; height: 340px; fill: #121212; opacity: 0.07"><path d="{{d.icon}}"></path></svg>
+  <div style="position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 16px 14px">
+    <button onClick="{{goBack}}" aria-label="Kookmodus sluiten" style="flex: none; width: 48px; height: 48px; border-radius: 999px; border: 0; background: rgba(255,255,255,0.6); color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round"><path d="M6 6l12 12 M18 6L6 18"></path></svg>
+    </button>
+    <span style="flex: 1; min-width: 0; font: 800 16px 'Bricolage Grotesque', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.title}}</span>
+    <span style="flex: none; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 10px; border-radius: 999px; background: rgba(18,18,18,0.12); font-size: 12px; font-weight: 800">
+      <svg viewBox="0 0 256 256" width="15" height="15" aria-hidden="true" style="fill: currentColor"><path d="{{icons.sun}}"></path></svg>
+      <span>Scherm blijft aan</span>
+    </span>
+  </div>
+  <div style="position: relative; display: flex; gap: 6px; padding: 0 16px">
+    <sc-for list="{{progress}}" as="pg" hint-placeholder-count="4">
+      <span style="flex: 1; height: 6px; border-radius: 999px; background: {{pg.bg}}"></span>
+    </sc-for>
+  </div>
+  <div style="position: relative; flex: 1; min-height: 0; padding: 26px 24px 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto">
+    <div style="display: flex; align-items: baseline; gap: 10px">
+      <span style="font: 800 112px/0.85 'Bricolage Grotesque', sans-serif; letter-spacing: -0.06em">{{stepNum}}</span>
+      <span style="font-size: 15px; font-weight: 800; opacity: 0.7">{{stepOf}}</span>
+    </div>
+    <p style="margin: 6px 0 0; font: 700 28px/1.3 Figtree, system-ui, sans-serif; letter-spacing: -0.01em">{{stepText}}</p>
+    <sc-if value="{{hasTimer}}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{toggleTimer}}" aria-pressed="{{timerPressed}}" style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px 0 14px; border-radius: 999px; border: 0; background: {{timerBg}}; color: {{timerFg}}; font: 800 15px Figtree, system-ui, sans-serif; cursor: pointer">
+        <svg viewBox="0 0 256 256" width="20" height="20" aria-hidden="true" style="fill: currentColor"><path d="{{icons.timer}}"></path></svg>
+        <span>{{timerLabel}}</span>
+      </button>
+    </sc-if>
+    <div style="margin-top: auto; padding: 14px; background: rgba(255,255,255,0.55); border-radius: 26px; display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 13px; font-weight: 800">{{cookIngLabel}}</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+        <sc-for list="{{ings}}" as="g" hint-placeholder-count="6">
+          <span style="padding: 7px 11px; background: #FFFFFF; border-radius: 999px; font-size: 13px; font-weight: 600">{{g.line}}</span>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  <div style="position: relative; display: flex; gap: 10px; padding: 8px 16px 20px">
+    <button onClick="{{prevStep}}" aria-label="{{prevLabel}}" style="flex: none; width: 68px; height: 68px; border-radius: 999px; border: 0; background: #FFFFFF; color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round"><path d="M15 5l-7 7l7 7"></path></svg>
+    </button>
+    <button onClick="{{nextStep}}" style="flex: 1; height: 68px; box-sizing: border-box; padding: 0 10px 0 26px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; display: flex; align-items: center; gap: 10px; font: 800 18px 'Bricolage Grotesque', sans-serif; cursor: pointer">
+      <span style="flex: 1; text-align: left">{{nextLabel}}</span>
+      <span style="width: 50px; height: 50px; border-radius: 999px; background: #FFFFFF; color: #121212; display: flex; align-items: center; justify-content: center">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12h14 M13 6l6 6l-6 6"></path></svg>
+      </span>
+    </button>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= TOEVOEGEN ================= -->
+<sc-if value="{{isAdd}}" hint-placeholder-val="{{ false }}">
+<div style="height: 844px; overflow-y: auto; background: #F2F2F0">
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 20px 10px">
+    <h1 style="margin: 0; font: 800 38px/1.02 'Bricolage Grotesque', sans-serif; letter-spacing: -0.035em">Nieuw<br>recept</h1>
+    <button onClick="{{goLibrary}}" aria-label="Sluiten" style="width: 48px; height: 48px; border-radius: 999px; border: 0; background: #FFFFFF; color: #121212; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round"><path d="M6 6l12 12 M18 6L6 18"></path></svg>
+    </button>
+  </div>
+  <div style="padding: 12px 20px 32px; display: flex; flex-direction: column; gap: 14px">
+    <div style="padding: 20px; background: #121212; color: #FFFFFF; border-radius: 30px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <label for="eazy-link" style="font: 800 20px 'Bricolage Grotesque', sans-serif">Plak een link</label>
+        <span style="font-size: 13px; color: #BDBDBD">Titel, ingrediënten, stappen en foto worden opgehaald.</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 16px; border-radius: 18px; background: #2A2A2A; color: #BDBDBD">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; flex: none"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0 -5.7-5.7l-1 1 M14 10a4 4 0 0 0 -5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>
+        <input id="eazy-link" type="url" placeholder="https://…" value="{{link}}" onChange="{{onLink}}" style="flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 500 15px Figtree, system-ui, sans-serif; color: #FFFFFF">
+      </div>
+      <button onClick="{{onImport}}" style="height: 56px; border-radius: 999px; border: 0; background: #9B8CFF; color: #121212; display: flex; align-items: center; justify-content: center; gap: 8px; font: 800 17px 'Bricolage Grotesque', sans-serif; cursor: pointer">
+        <svg viewBox="0 0 256 256" width="20" height="20" aria-hidden="true" style="fill: currentColor"><path d="{{icons.sparkle}}"></path></svg>
+        <span>Importeren</span>
+      </button>
+      <span style="font-size: 12px; color: #BDBDBD; text-align: center">Nog sneller: <strong style="color: #FFFFFF">Delen → EazyRecipes</strong> vanuit je browser</span>
+    </div>
+
+    <sc-if value="{{imported}}" hint-placeholder-val="{{ false }}">
+      <div style="background: #FFFFFF; border-radius: 30px; overflow: hidden; display: flex; flex-direction: column">
+        <div style="position: relative; height: 150px">
+          <img src="{{pv.img}}" alt="" style="display: block; width: 100%; height: 100%; object-fit: cover">
+          <span style="position: absolute; left: 12px; top: 12px; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 8px; border-radius: 999px; background: #3DD66F; color: #121212; font-size: 12px; font-weight: 800">
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>
+            <span>Gevonden</span>
+          </span>
+        </div>
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font: 800 22px/1.1 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">{{pv.title}}</span>
+            <span style="font-size: 13px; font-weight: 600; color: #5E6066">{{pv.summary}}</span>
+          </div>
+          <div style="display: flex; gap: 8px">
+            <button onClick="{{openPreview}}" style="flex: 1; height: 50px; border-radius: 999px; border: 2px solid #121212; background: #FFFFFF; color: #121212; font: 800 15px Figtree, system-ui, sans-serif; cursor: pointer">Bekijk &amp; bewerk</button>
+            <button onClick="{{savePreview}}" style="flex: 1; height: 50px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; font: 800 15px Figtree, system-ui, sans-serif; cursor: pointer">Opslaan</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <h2 style="margin: 6px 0 0; font: 800 22px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em">Of voeg toe via</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{addOptions}}" as="o" hint-placeholder-count="4">
+        <button onClick="{{o.tap}}" style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 148px; padding: 16px; background: #FFFFFF; border: 0; border-radius: 26px; text-align: left; cursor: pointer; font-family: Figtree, system-ui, sans-serif; color: #121212">
+          <span style="width: 50px; height: 50px; border-radius: 17px; background: {{o.bg}}; display: flex; align-items: center; justify-content: center">
+            <svg viewBox="0 0 256 256" width="24" height="24" aria-hidden="true" style="fill: #121212"><path d="{{o.icon}}"></path></svg>
+          </span>
+          <span style="font: 800 16px/1.15 'Bricolage Grotesque', sans-serif">{{o.title}}</span>
+          <span style="font-size: 12px; line-height: 1.4; color: #5E6066">{{o.desc}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= FILTERS (bottom sheet) ================= -->
+<sc-if value="{{filterOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(18,18,18,0.45); display: flex; flex-direction: column">
+  <button onClick="{{closeFilters}}" aria-label="Filters sluiten" style="flex: 1; border: 0; background: transparent; cursor: pointer"></button>
+  <div role="dialog" aria-label="Filters" style="background: #FFFFFF; border-radius: 34px 34px 0 0; padding: 10px 20px 20px; display: flex; flex-direction: column; gap: 18px">
+    <span style="align-self: center; width: 44px; height: 5px; border-radius: 999px; background: #D4D4CF"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h2 style="margin: 0; font: 800 28px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.03em">Filters</h2>
+      <button onClick="{{clearFilters}}" style="height: 40px; padding: 0 4px; border: 0; background: none; font: 700 14px Figtree, system-ui, sans-serif; color: #121212; text-decoration: underline; cursor: pointer">Wis alles</button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 13px; font-weight: 800; color: #5E6066">Bereidingstijd</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{timeOpts}}" as="o" hint-placeholder-count="4">
+          <button onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="height: 42px; padding: 0 16px; border-radius: 999px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Figtree, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 13px; font-weight: 800; color: #5E6066">Bron</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{sourceOpts}}" as="o" hint-placeholder-count="4">
+          <button onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="height: 42px; padding: 0 16px; border-radius: 999px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Figtree, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 13px; font-weight: 800; color: #5E6066">Sorteren</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{sortOpts}}" as="o" hint-placeholder-count="3">
+          <button onClick="{{o.pick}}" aria-pressed="{{o.pressed}}" style="height: 42px; padding: 0 16px; border-radius: 999px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Figtree, system-ui, sans-serif; cursor: pointer">{{o.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+    <button onClick="{{closeFilters}}" style="height: 60px; border-radius: 999px; border: 0; background: #121212; color: #FFFFFF; font: 800 18px 'Bricolage Grotesque', sans-serif; cursor: pointer">{{applyLabel}}</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= DELEN (bottom sheet) ================= -->
+<sc-if value="{{shareOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(18,18,18,0.45); display: flex; flex-direction: column">
+  <button onClick="{{closeShare}}" aria-label="Delen sluiten" style="flex: 1; border: 0; background: transparent; cursor: pointer"></button>
+  <div role="dialog" aria-label="Recept delen" style="background: #FFFFFF; border-radius: 34px 34px 0 0; padding: 10px 20px 24px; display: flex; flex-direction: column; gap: 12px">
+    <span style="align-self: center; width: 44px; height: 5px; border-radius: 999px; background: #D4D4CF"></span>
+    <h2 style="margin: 0 0 4px; font: 800 28px 'Bricolage Grotesque', sans-serif; letter-spacing: -0.03em">Deel {{d.title}}</h2>
+    <sc-for list="{{shareOpts}}" as="so" hint-placeholder-count="3">
+      <button onClick="{{so.tap}}" style="display: flex; align-items: center; gap: 14px; min-height: 68px; padding: 10px 14px 10px 10px; border-radius: 22px; border: 0; background: #F2F2F0; text-align: left; cursor: pointer; font-family: Figtree, system-ui, sans-serif; color: #121212">
+        <span style="flex: none; width: 48px; height: 48px; border-radius: 16px; background: {{so.bg}}; display: flex; align-items: center; justify-content: center">
+          <svg viewBox="0 0 256 256" width="22" height="22" aria-hidden="true" style="fill: #121212"><path d="{{so.icon}}"></path></svg>
+        </span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font: 800 16px 'Bricolage Grotesque', sans-serif">{{so.title}}</span>
+          <span style="font-size: 12px; color: #5E6066">{{so.desc}}</span>
+        </span>
+      </button>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= TOAST ================= -->
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="position: absolute; left: 20px; right: 20px; bottom: {{toastBottom}}; display: flex; justify-content: center; pointer-events: none">
+  <span style="display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 999px; background: #121212; color: #FFFFFF; font: 700 14px Figtree, system-ui, sans-serif; box-shadow: 0 10px 26px rgba(0,0,0,0.25)">
+    <span style="flex: none; width: 8px; height: 8px; border-radius: 999px; background: #9B8CFF"></span>
+    <span>{{toast}}</span>
+  </span>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":{"editor":"enum","options":["library","detail","cook","add","pantry","discover","more"],"default":"library","section":"Startstand"},"ctx":{"editor":"enum","options":["alles","vlees","vis","vega","vegan","zoet","snel"],"default":"alles","section":"Startstand"},"tab":{"editor":"enum","options":["recipes","collections"],"default":"recipes","section":"Startstand"},"recipe":{"editor":"int","min":0,"max":7,"default":0,"section":"Startstand"},"step":{"editor":"int","min":0,"max":3,"default":0,"section":"Startstand"},"imported":{"editor":"boolean","default":false,"section":"Startstand"},"$preview":{"width":390,"height":844}}'>
+// Phosphor Icons (MIT), fill-variant, viewBox 0 0 256 256
+const PH = {
+  books: 'M231.65,194.55,198.46,36.75a16,16,0,0,0-19-12.39L132.65,34.42a16.08,16.08,0,0,0-12.3,19l33.19,157.8A16,16,0,0,0,169.16,224a16.25,16.25,0,0,0,3.38-.36l46.81-10.06A16.09,16.09,0,0,0,231.65,194.55ZM136,50.15c0-.06,0-.09,0-.09l46.8-10,3.33,15.87L139.33,66Zm10,47.38-3.35-15.9,46.82-10.06,3.34,15.9Zm70,100.41-46.8,10-3.33-15.87L212.67,182,216,197.85C216,197.91,216,197.94,216,197.94ZM104,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V48A16,16,0,0,0,104,32ZM56,48h48V64H56Zm48,160H56V192h48v16Z',
+  basket: 'M238,82.73A8,8,0,0,0,232,80H187.63L134,18.73a8,8,0,0,0-12,0L68.37,80H24a8,8,0,0,0-7.930,9.06L31.14,202.12A16.06,16.06,0,0,0,47,216H209a16.06,16.06,0,0,0,15.86-13.88L239.93,89.06A8,8,0,0,0,238,82.73ZM81.6,184a7.32,7.32,0,0,1-.81,0,8,8,0,0,1-8-7.2l-5.6-56a8,8,0,0,1,15.92-1.6l5.6,56A8,8,0,0,1,81.6,184Zm54.4-8a8,8,0,0,1-16,0V120a8,8,0,0,1,16,0ZM89.63,80,128,36.15,166.37,80Zm99.13,40.8-5.6,56a8,8,0,0,1-7.95,7.2,7.32,7.32,0,0,1-.81,0,8,8,0,0,1-7.16-8.76l5.6-56a8,8,0,0,1,15.92,1.6Z',
+  compass: 'M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm51.58,57.79-32,64a4.080,4.080,0,0,1-1.79,1.79l-64,32a4,4,0,0,1-5.37-5.37l32-64a4.080,4.080,0,0,1,1.79-1.79l64-32A4,4,0,0,1,179.58,81.79Z',
+  dots: 'M156,128a28,28,0,1,1-28-28A28,28,0,0,1,156,128ZM48,100a28,28,0,1,0,28,28A28,28,0,0,0,48,100Zm160,0a28,28,0,1,0,28,28A28,28,0,0,0,208,100Z',
+  forkKnife: 'M216,40V224a8,8,0,0,1-16,0V176H152a8,8,0,0,1-8-8,268.75,268.75,0,0,1,7.22-56.88c9.78-40.49,28.32-67.63,53.63-78.47A8,8,0,0,1,216,40Zm-96.11-1.31a8,8,0,1,0-15.78,2.63L111.89,88H88V40a8,8,0,0,0-16,0V88H48.11l7.78-46.68a8,8,0,1,0-15.78-2.63l-8,48A8.17,8.17,0,0,0,32,88a48.07,48.07,0,0,0,40,47.32V224a8,8,0,0,0,16,0V135.32A48.07,48.07,0,0,0,128,88a8.17,8.17,0,0,0-.11-1.31Z',
+  cow: 'M104,192a8,8,0,0,1-8,8H80a8,8,0,0,1,0-16H96A8,8,0,0,1,104,192Zm72-8H160a8,8,0,0,0,0,16h16a8,8,0,0,0,0-16Zm68.39-61.88A16,16,0,0,1,232,128H200v32a40,40,0,0,1-24,72H80a40,40,0,0,1-24-72V128H24A16,16,0,0,1,8.31,109,56.13,56.13,0,0,1,63.22,64h1.64A55.830,55.830,0,0,1,48,24a8,8,0,0,1,16,0,40,40,0,0,0,40,40h48a40,40,0,0,0,40-40,8,8,0,0,1,16,0,55.830,55.830,0,0,1-16.86,40h1.64a56.13,56.13,0,0,1,54.91,45A15.82,15.82,0,0,1,244.39,122.12ZM144,124a12,12,0,1,0,12-12A12,12,0,0,0,144,124Zm-56,0a12,12,0,1,0,12-12A12,12,0,0,0,88,124ZM56,112v-8a39.81,39.81,0,0,1,8-24h-.8A40.09,40.09,0,0,0,24,112Zm144,80a24,24,0,0,0-24-24H80a24,24,0,0,0,0,48h96A24,24,0,0,0,200,192Zm32-80a40.080,40.080,0,0,0-39.2-32H192a39.81,39.81,0,0,1,8,24v8Z',
+  fish: 'M168,76a12,12,0,1,1-12-12A12,12,0,0,1,168,76Zm48.72,67.64c-19.37,34.9-55.44,53.76-107.24,56.1l-22,51.41A8,8,0,0,1,80.1,256l-.51,0a8,8,0,0,1-7.19-5.78L57.6,198.39,5.8,183.56a8,8,0,0,1-1-15.05l51.41-22c2.35-51.78,21.21-87.84,56.09-107.22,24.75-13.74,52.74-15.84,71.88-15.18,18.64.64,36,4.27,38.86,6a8,8,0,0,1,2.83,2.83c1.69,2.85,5.33,20.21,6,38.85C232.55,90.89,230.46,118.89,216.72,143.64Zm-4.3-100.07c-14.15-3-64.1-11-100.3,14.75a81.21,81.21,0,0,0-16,15.07,36,36,0,0,0,39.35,38.44,8,8,0,0,1,8.73,8.73,36,36,0,0,0,38.47,39.34,80.81,80.81,0,0,0,15-16C223.42,107.73,215.42,57.74,212.42,43.57Z',
+  leaf: 'M223.45,40.07a8,8,0,0,0-7.52-7.52C139.8,28.080,78.82,51,52.82,94a87.09,87.09,0,0,0-12.76,49A101.72,101.72,0,0,0,46.7,175.2a4,4,0,0,0,6.61,1.43l85-86.3a8,8,0,0,1,11.32,11.32L56.74,195.94,42.55,210.13a8.2,8.2,0,0,0-.6,11.1,8,8,0,0,0,11.71.43l16.79-16.79c14.14,6.84,28.41,10.57,42.56,11.070q1.67.06,3.33.06A86.93,86.93,0,0,0,162,203.18C205,177.18,227.93,116.21,223.45,40.07Z',
+  plant: 'M205.41,159.07a60.9,60.9,0,0,1-31.83,8.86,71.71,71.71,0,0,1-27.36-5.66A55.55,55.55,0,0,0,136,194.51V224a8,8,0,0,1-8.53,8,8.18,8.18,0,0,1-7.47-8.25V211.31L81.38,172.69A52.5,52.5,0,0,1,63.44,176a45.82,45.82,0,0,1-23.92-6.67C17.73,156.09,6,125.62,8.27,87.79a8,8,0,0,1,7.52-7.52c37.83-2.23,68.3,9.46,81.5,31.25A46,46,0,0,1,103.74,140a4,4,0,0,1-6.89,2.43l-19.2-20.1a8,8,0,0,0-11.31,11.31l53.88,55.25c.06-.78.13-1.56.21-2.33a68.56,68.56,0,0,1,18.64-39.46l50.59-53.46a8,8,0,0,0-11.31-11.32l-49,51.82a4,4,0,0,1-6.78-1.74c-4.74-17.48-2.65-34.88,6.4-49.82,17.86-29.48,59.42-45.26,111.18-42.22a8,8,0,0,1,7.52,7.52C250.67,99.65,234.89,141.21,205.41,159.07Z',
+  cake: 'M208,88H136V79a32.06,32.06,0,0,0,24-31c0-28-26.44-45.91-27.56-46.66a8,8,0,0,0-8.88,0C122.44,2.09,96,20,96,48a32.06,32.06,0,0,0,24,31v9H48a24,24,0,0,0-24,24v23.33a40.84,40.84,0,0,0,8,24.24V200a24,24,0,0,0,24,24H200a24,24,0,0,0,24-24V159.57a40.84,40.84,0,0,0,8-24.24V112A24,24,0,0,0,208,88ZM112,48c0-13.57,10-24.46,16-29.79,6,5.33,16,16.22,16,29.79a16,16,0,0,1-32,0Zm104,87.33c0,13.25-10.46,24.31-23.32,24.66A24,24,0,0,1,168,136a8,8,0,0,0-16,0,24,24,0,0,1-48,0,8,8,0,0,0-16,0,24,24,0,0,1-24.68,24C50.46,159.64,40,148.58,40,135.33V112a8,8,0,0,1,8-8H208a8,8,0,0,1,8,8Z',
+  lightning: 'M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z',
+  clock: 'M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm56,112H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48a8,8,0,0,1,0,16Z',
+  heart: 'M240,102c0,70-103.79,126.66-108.21,129a8,8,0,0,1-7.58,0C119.79,228.66,16,172,16,102A62.070,62.070,0,0,1,78,40c20.65,0,38.73,8.88,50,23.89C139.27,48.88,157.35,40,178,40A62.070,62.070,0,0,1,240,102Z',
+  search: 'M168,112a56,56,0,1,1-56-56A56,56,0,0,1,168,112Zm61.66,117.66a8,8,0,0,1-11.32,0l-50.06-50.07a88,88,0,1,1,11.32-11.31l50.06,50.06A8,8,0,0,1,229.66,229.66ZM112,184a72,72,0,1,0-72-72A72.080,72.080,0,0,0,112,184Z',
+  sparkle: 'M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z',
+  share: 'M212,200a36,36,0,1,1-69.85-12.25l-53-34.05a36,36,0,1,1,0-51.4l53-34a36.09,36.09,0,1,1,8.67,13.45l-53,34.05a36,36,0,0,1,0,24.5l53,34.05A36,36,0,0,1,212,200Z',
+  play: 'M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z',
+  sun: 'M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.070,64.070,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z',
+  timer: 'M128,40a96,96,0,1,0,96,96A96.11,96.11,0,0,0,128,40Zm45.66,61.66-40,40a8,8,0,0,1-11.32-11.32l40-40a8,8,0,0,1,11.32,11.32ZM96,16a8,8,0,0,1,8-8h48a8,8,0,0,1,0,16H104A8,8,0,0,1,96,16Z',
+  users: 'M164.47,195.63a8,8,0,0,1-6.7,12.37H10.23a8,8,0,0,1-6.7-12.37,95.83,95.83,0,0,1,47.22-37.71,60,60,0,1,1,66.5,0A95.83,95.83,0,0,1,164.47,195.63Zm87.91-.15a95.87,95.87,0,0,0-47.13-37.56A60,60,0,0,0,144.7,54.59a4,4,0,0,0-1.33,6A75.83,75.83,0,0,1,147,150.53a4,4,0,0,0,1.07,5.53,112.32,112.32,0,0,1,29.85,30.83,23.92,23.92,0,0,1,3.65,16.47,4,4,0,0,0,3.95,4.64h60.3a8,8,0,0,0,7.73-5.93A8.22,8.22,0,0,0,252.38,195.48Z',
+  carrot: 'M232,80H199.44a64,64,0,0,1-10.19,77.26c-8.52,8.69-19.61,16.92-31.85,24.51a4,4,0,0,1-4.91-.59l-34.84-34.84a8,8,0,0,0-11.49.18,8.23,8.23,0,0,0,.41,11.38l29.88,29.88a4,4,0,0,1-1,6.39C95.74,214.79,53,228.54,46.78,230.48a16,16,0,0,1-21.26-21.26c2.73-8.71,29-90.27,64.86-133.35a4,4,0,0,1,5.9-.26l42.05,42.06a8,8,0,0,0,11.71-.43,8.19,8.19,0,0,0-.6-11.1L108.080,64.78a4,4,0,0,1,.63-6.18,64,64,0,0,1,67.28-2V24a8,8,0,0,1,8.54-8A8.18,8.18,0,0,1,192,24.28V52.69l26.34-26.35a8,8,0,0,1,11.32,11.32L203.31,64h28.41A8.18,8.18,0,0,1,240,71.47,8,8,0,0,1,232,80Z',
+  pencil: 'M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM192,108.68,147.31,64l24-24L216,84.68Z',
+  camera: 'M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm-44,76a36,36,0,1,1-36-36A36,36,0,0,1,164,132Z',
+  list: 'M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM68,188a12,12,0,1,1,12-12A12,12,0,0,1,68,188Zm0-48a12,12,0,1,1,12-12A12,12,0,0,1,68,140Zm0-48A12,12,0,1,1,80,80,12,12,0,0,1,68,92Zm124,92H104a8,8,0,0,1,0-16h88a8,8,0,0,1,0,16Zm0-48H104a8,8,0,0,1,0-16h88a8,8,0,0,1,0,16Zm0-48H104a8,8,0,0,1,0-16h88a8,8,0,0,1,0,16Z',
+  bookmark: 'M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.43l59.77,37.35A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Z',
+  folder: 'M232,88V200.89A15.13,15.13,0,0,1,216.89,216H40a16,16,0,0,1-16-16V64A16,16,0,0,1,40,48H93.33a16.12,16.12,0,0,1,9.6,3.2L130.67,72H216A16,16,0,0,1,232,88Z',
+  chefHat: 'M240,112a56.06,56.06,0,0,0-56-56c-1.77,0-3.54.1-5.29.26a56,56,0,0,0-101.42,0C75.54,56.1,73.77,56,72,56A56,56,0,0,0,48,162.59V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V162.59A56.09,56.09,0,0,0,240,112Zm-87.76,30.06,8-32a8,8,0,0,1,15.52,3.88l-8,32A8,8,0,0,1,160,152a8.13,8.13,0,0,1-1.95-.24A8,8,0,0,1,152.24,142.06ZM120,112a8,8,0,0,1,16,0v32a8,8,0,0,1-16,0Zm-33.94-7.76a8,8,0,0,1,9.7,5.82l8,32a8,8,0,0,1-5.82,9.7,8.13,8.13,0,0,1-2,.24,8,8,0,0,1-7.75-6.06l-8-32A8,8,0,0,1,86.06,104.24ZM192,208H64V167.42a55.49,55.49,0,0,0,8,.58H184a55.49,55.49,0,0,0,8-.58Z'
+};
+
+const IMG = [
+  '/_blob/45ee6fe1ab0aa6cb392254e1f2bdd8f5',
+  '/_blob/dd000f41a5001df613ab13dffc72ffa0',
+  '/_blob/0da382ce7a00669009247dccffa9ba98',
+  '/_blob/385110b99c56dc9a995a3937c2a671da',
+  '/_blob/e7bbb011b812173cb133922ba7346be5',
+  '/_blob/4fedbdd82e39116ab47825186ae10f9d',
+  '/_blob/9b188cd8aa9c01825d39d4a3de7672b6',
+  '/_blob/4d65b63db4f3b233cb901aae34c0e76b'
+];
+
+const INK = '#121212';
+const BRAND = '#9B8CFF';
+const CTX = {
+  alles: { label: 'Alles', vivid: INK, deep: INK, icon: PH.forkKnife },
+  vlees: { label: 'Vlees', vivid: '#FF5A4A', deep: '#C8261A', icon: PH.cow },
+  vis:   { label: 'Vis', vivid: '#4D9DFF', deep: '#1F5FCC', icon: PH.fish },
+  vega:  { label: 'Vega', vivid: '#3DD66F', deep: '#167A3B', icon: PH.leaf },
+  vegan: { label: 'Vegan', vivid: '#47E3BC', deep: '#0B7560', icon: PH.plant },
+  zoet:  { label: 'Zoet', vivid: '#FF8AD4', deep: '#B0237A', icon: PH.cake },
+  snel:  { label: 'Snel', vivid: '#FFC738', deep: '#8F5800', icon: PH.lightning }
+};
+const CTX_ORDER = ['alles', 'vlees', 'vis', 'vega', 'vegan', 'zoet', 'snel'];
+const HERO_TITLE = {
+  alles: 'Wat koken we\nvanavond?', vlees: 'Vlees', vis: 'Vis', vega: 'Vega', vegan: 'Vegan', zoet: 'Zoet &\nbakken', snel: 'Snel\nklaar'
+};
+
+function ing(a, u, n, k) { return { a: a, u: u, n: n, k: k || '' }; }
+
+const RECIPES = [
+  { title: 'Stoofvlees met friet', cat: 'vlees', min: 180, serv: 4, source: 'leukerecepten.nl',
+    ing: [ing(800, 'g', 'runderlappen'), ing(2, '', 'uien', 'ui'), ing(330, 'ml', 'donker bier'), ing(2, 'el', 'appelstroop'), ing(2, '', 'laurierblaadjes'), ing(30, 'g', 'boter', 'boter')],
+    steps: ['Snijd het vlees in grove blokken en bestrooi met peper en zout.', 'Bak het vlees in de boter rondom bruin en haal het uit de pan.', 'Fruit de uien in dezelfde pan. Voeg het vlees, bier, appelstroop en laurier toe.', 'Laat 2,5 uur zachtjes stoven met de deksel op de pan, tot het vlees uit elkaar valt.'] },
+  { title: 'Zalm uit de oven met groenten', cat: 'vis', min: 30, serv: 2, source: 'eefkooktzo.nl',
+    ing: [ing(2, '', 'zalmfilets', 'zalm'), ing(300, 'g', 'krieltjes'), ing(1, '', 'broccoli'), ing(2, '', 'wortels', 'wortel'), ing(2, 'el', 'olijfolie'), ing(1, '', 'citroen', 'citroen')],
+    steps: ['Verwarm de oven voor op 200 °C.', 'Snijd de groenten in stukken en meng ze met de olijfolie, peper en zout.', 'Leg de krieltjes en groenten op een bakplaat en bak ze 10 minuten voor.', 'Leg de zalm erbij, besprenkel met citroen en bak nog 15 minuten.'] },
+  { title: 'Pasta pesto met tomaatjes', cat: 'vega', min: 20, serv: 2, source: 'Eigen recept',
+    ing: [ing(200, 'g', 'pasta', 'pasta'), ing(3, 'el', 'groene pesto'), ing(150, 'g', 'spinazie', 'spinazie'), ing(150, 'g', 'cherrytomaatjes', 'tomaat'), ing(2, 'el', 'pijnboompitten')],
+    steps: ['Kook de pasta volgens de verpakking.', 'Rooster de pijnboompitten kort in een droge pan.', 'Laat de spinazie slinken in de warme pasta en roer de pesto erdoor.', 'Serveer met gehalveerde tomaatjes en de pijnboompitten.'] },
+  { title: 'Appelkruimeltaart', cat: 'zoet', min: 75, serv: 8, source: 'leukerecepten.nl',
+    ing: [ing(250, 'g', 'zelfrijzend bakmeel'), ing(150, 'g', 'boter', 'boter'), ing(125, 'g', 'witte basterdsuiker'), ing(1, '', 'ei', 'eieren'), ing(600, 'g', 'appels', 'appels'), ing(1, 'tl', 'kaneel')],
+    steps: ['Verwarm de oven voor op 180 °C en vet een springvorm in.', 'Kneed bakmeel, boter, suiker, ei en een snufje zout tot een kruimelig deeg.', 'Druk twee derde van het deeg in de vorm en vul met de appel en kaneel.', 'Verkruimel de rest van het deeg erover en bak de taart in 60 minuten goudbruin.'] },
+  { title: 'Kip kerrie', cat: 'vlees', min: 35, serv: 4, source: 'eefkooktzo.nl',
+    ing: [ing(500, 'g', 'kipfilet', 'kipfilet'), ing(1, '', 'ui', 'ui'), ing(2, 'el', 'kerriepoeder'), ing(250, 'ml', 'kokosmelk', 'kokosmelk'), ing(300, 'g', 'rijst', 'rijst'), ing(1, '', 'appel', 'appels')],
+    steps: ['Kook de rijst volgens de verpakking.', 'Snijd de kip, ui en appel in blokjes.', 'Bak de kip goudbruin, voeg ui en kerriepoeder toe en bak 2 minuten mee.', 'Schenk de kokosmelk erbij, voeg de appel toe en laat 10 minuten zachtjes koken.'] },
+  { title: 'Romige linzencurry', cat: 'vegan', min: 40, serv: 4, source: 'Foto uit kookboek',
+    ing: [ing(250, 'g', 'rode linzen'), ing(400, 'ml', 'kokosmelk', 'kokosmelk'), ing(1, 'blik', 'tomatenblokjes', 'tomaat'), ing(1, '', 'ui', 'ui'), ing(2, 'tenen', 'knoflook', 'knoflook'), ing(1, 'el', 'currypasta')],
+    steps: ['Fruit de ui en knoflook in een scheutje olie.', 'Bak de currypasta 1 minuut mee.', 'Voeg de linzen, tomatenblokjes en kokosmelk toe.', 'Laat 25 minuten zachtjes koken tot de linzen zacht zijn.'] },
+  { title: 'Shakshuka met feta', cat: 'vega', min: 25, serv: 2, source: 'leukerecepten.nl',
+    ing: [ing(4, '', 'eieren', 'eieren'), ing(1, 'blik', 'tomatenblokjes', 'tomaat'), ing(1, '', 'ui', 'ui'), ing(1, '', 'rode paprika', 'paprika'), ing(2, 'tenen', 'knoflook', 'knoflook'), ing(75, 'g', 'feta')],
+    steps: ['Snijd ui, paprika en knoflook fijn en fruit ze 5 minuten.', 'Voeg de tomatenblokjes toe en laat 10 minuten inkoken.', 'Maak vier kuiltjes en breek in elk kuiltje een ei.', 'Laat met de deksel op de pan 6 tot 8 minuten garen en verkruimel de feta erover.'] },
+  { title: 'Kibbeling met friet', cat: 'vis', min: 20, serv: 2, source: 'Eigen recept',
+    ing: [ing(300, 'g', 'witvis'), ing(75, 'g', 'bloem'), ing(1, '', 'ei', 'eieren'), ing(4, 'el', 'remouladesaus'), ing(1, '', 'citroen', 'citroen')],
+    steps: ['Snijd de vis in stukken van een paar centimeter.', 'Klop het ei los en maak een beslag met de bloem en een scheutje water.', 'Haal de vis door het beslag en frituur 4 minuten op 180 °C.', 'Serveer met remoulade en een partje citroen.'] }
+];
+
+const PANTRY = [
+  ['ui', 'Ui'], ['knoflook', 'Knoflook'], ['eieren', 'Eieren'], ['tomaat', 'Tomaat'],
+  ['kokosmelk', 'Kokosmelk'], ['rijst', 'Rijst'], ['pasta', 'Pasta'], ['spinazie', 'Spinazie'],
+  ['kipfilet', 'Kipfilet'], ['zalm', 'Zalm'], ['appels', 'Appels'], ['boter', 'Boter'],
+  ['citroen', 'Citroen'], ['paprika', 'Paprika'], ['wortel', 'Wortel']
+];
+const PANTRY_DEFAULT = ['ui', 'knoflook', 'eieren', 'tomaat', 'paprika'];
+
+const COLLECTIONS = [
+  { name: 'Snel doordeweeks', ids: [6, 2, 7, 1] },
+  { name: 'Favorieten', ids: [3, 0, 4] },
+  { name: 'Comfort food', ids: [0, 5, 4] },
+  { name: 'Weekend', ids: [1, 3, 6] }
+];
+
+const G_PLUS = 'M12 5v14 M5 12h14';
+const G_CHECK = 'M5 12.5l4.5 4.5L19 7';
+
+function fmtAmount(n, u) {
+  let s;
+  if (u === 'g' || u === 'ml') {
+    s = String(n >= 100 ? Math.round(n / 10) * 10 : Math.max(5, Math.round(n / 5) * 5));
+  } else {
+    const q = Math.round(n * 4) / 4;
+    const w = Math.floor(q);
+    const f = q - w;
+    const fr = f === 0.25 ? '¼' : f === 0.5 ? '½' : f === 0.75 ? '¾' : '';
+    s = (w > 0 ? String(w) : '') + fr;
+    if (!s) s = '¼';
+  }
+  return u ? s + ' ' + u : s;
+}
+
+function matchesCtx(r, key) {
+  if (key === 'alles') return true;
+  if (key === 'snel') return r.min <= 30;
+  if (key === 'vega') return r.cat === 'vega' || r.cat === 'vegan';
+  return r.cat === key;
+}
+
+function timeLabel(min) {
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? h + 'u' + m : h + ' uur';
+}
+
+function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props || {};
+    const screen = s.screen || p.screen || 'library';
+    const ctxKey = s.ctx || p.ctx || 'alles';
+    const ctx = CTX[ctxKey] || CTX.alles;
+    const tab = s.tab || p.tab || 'recipes';
+    const propRecipe = Math.max(0, Math.min(RECIPES.length - 1, parseInt(p.recipe != null ? p.recipe : 0, 10) || 0));
+    const rIdx = s.recipe != null ? s.recipe : propRecipe;
+    const r = RECIPES[rIdx];
+    const rc = CTX[r.cat];
+    const servings = s.servings || r.serv;
+    const checked = s.checked || {};
+    const propStep = parseInt(p.step != null ? p.step : 0, 10) || 0;
+    const step = Math.max(0, Math.min(s.step != null ? s.step : propStep, r.steps.length - 1));
+    const q = s.q || '';
+    const go = (scr, extra) => this.setState(Object.assign({ screen: scr, filterOpen: false, shareOpen: false }, extra || {}));
+    const toast = (msg) => {
+      this.setState({ toast: msg });
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => this.setState({ toast: null }), 2200);
+    };
+    const later = (what) => () => toast(what + ' komt in een volgende fase');
+    const openRecipe = (i) => () => go('detail', { recipe: i, servings: null, checked: {}, step: 0, from: screen });
+
+    // ---------- Bibliotheek ----------
+    const favs = s.favs || [0, 3, 4];
+    const isFav = (i) => favs.indexOf(i) >= 0;
+    const toggleFav = (i) => () => {
+      const on = isFav(i);
+      this.setState({ favs: on ? favs.filter((x) => x !== i) : favs.concat([i]) });
+      toast(on ? 'Uit je favorieten gehaald' : 'Toegevoegd aan favorieten');
+    };
+    const favOnly = tab === 'favorites';
+    const maxMin = s.maxMin || 0;
+    const sources = s.sources || [];
+    const sort = s.sort || 'recent';
+    const coll = s.coll != null ? s.coll : null;
+    const activeCount = (maxMin ? 1 : 0) + (sources.length ? 1 : 0) + (sort !== 'recent' ? 1 : 0);
+    const ql = q.trim().toLowerCase();
+    const FEATURED = 6;
+    const showFeatured = ctxKey === 'alles' && !ql && activeCount === 0 && coll === null && !favOnly;
+    const idxs = [];
+    RECIPES.forEach((rec, i) => {
+      if (!matchesCtx(rec, ctxKey)) return;
+      if (ql && rec.title.toLowerCase().indexOf(ql) < 0 && !rec.ing.some((g) => g.n.toLowerCase().indexOf(ql) >= 0)) return;
+      if (favOnly && !isFav(i)) return;
+      if (maxMin && rec.min > maxMin) return;
+      if (sources.length && sources.indexOf(rec.source) < 0) return;
+      if (coll !== null && COLLECTIONS[coll].ids.indexOf(i) < 0) return;
+      idxs.push(i);
+    });
+    if (sort === 'snel') idxs.sort((a, b) => RECIPES[a].min - RECIPES[b].min);
+    if (sort === 'az') idxs.sort((a, b) => RECIPES[a].title.localeCompare(RECIPES[b].title));
+    const total = idxs.length;
+    const list = idxs.filter((i) => !(showFeatured && i === FEATURED)).map((i) => {
+      const rec = RECIPES[i];
+      const c = CTX[rec.cat];
+      const fast = rec.min <= 30;
+      const fav = isFav(i);
+      return { title: rec.title, source: rec.source, img: IMG[i], icon: c.icon, vivid: c.vivid, open: openRecipe(i),
+        timeBg: fast ? '#FFC738' : 'rgba(18,18,18,0.74)', timeFg: fast ? INK : '#FFFFFF',
+        timeIcon: fast ? PH.lightning : PH.clock, timeText: fast ? 'Snel · ' + timeLabel(rec.min) : timeLabel(rec.min),
+        favBg: fav ? BRAND : 'rgba(255,255,255,0.92)', favFill: fav ? 'currentColor' : 'none',
+        favPressed: fav ? 'true' : 'false', favLabel: fav ? 'Uit favorieten halen' : 'Aan favorieten toevoegen',
+        toggleFav: toggleFav(i) };
+    });
+    const left = [];
+    const right = [];
+    list.forEach((card, i) => {
+      if (i % 2 === 0) { card.h = (left.length % 2 === 0 ? 216 : 168) + 'px'; left.push(card); }
+      else { card.h = (right.length % 2 === 0 ? 168 : 216) + 'px'; right.push(card); }
+    });
+    const fr = RECIPES[FEATURED];
+    const fc = CTX[fr.cat];
+
+    const cats = CTX_ORDER.map((k) => {
+      const c = CTX[k];
+      const on = k === ctxKey;
+      return { label: c.label, icon: c.icon, pressed: on ? 'true' : 'false',
+        bg: c.vivid, fg: k === 'alles' ? '#FFFFFF' : INK,
+        ring: on ? '0 0 0 3px #F2F2F0, 0 0 0 6px #121212' : 'none',
+        lift: on ? 'translateY(-3px)' : 'none', weight: on ? '800' : '600',
+        pick: () => this.setState({ ctx: k, tab: tab === 'collections' ? 'recipes' : tab }) };
+    });
+
+    const isAlles = ctxKey === 'alles';
+    const nRec = (n) => (n === 1 ? '1 recept' : n + ' recepten');
+    const pill = (on) => ({ bg: on ? INK : '#F2F2F0', fg: on ? '#FFFFFF' : INK, pressed: on ? 'true' : 'false' });
+    const timeOpts = [[0, 'Alles'], [20, '≤ 20 min'], [30, '≤ 30 min'], [60, '≤ 1 uur']].map((t) =>
+      Object.assign({ label: t[1], pick: () => this.setState({ maxMin: t[0] }) }, pill(maxMin === t[0])));
+    const allSources = RECIPES.map((x) => x.source).filter((v, i, a) => a.indexOf(v) === i);
+    const sourceOpts = allSources.map((src) => {
+      const on = sources.indexOf(src) >= 0;
+      return Object.assign({ label: src, pick: () => this.setState({ sources: on ? sources.filter((x) => x !== src) : sources.concat([src]) }) }, pill(on));
+    });
+    const SORTS = { recent: 'Nieuwste', snel: 'Snelste eerst', az: 'A–Z' };
+    const sortOpts = Object.keys(SORTS).map((k) => Object.assign({ label: SORTS[k], pick: () => this.setState({ sort: k }) }, pill(sort === k)));
+    const activeChips = [];
+    if (coll !== null) activeChips.push({ label: COLLECTIONS[coll].name, aria: 'Collectie-filter wissen', clear: () => this.setState({ coll: null }) });
+    if (maxMin) activeChips.push({ label: '≤ ' + maxMin + ' min', aria: 'Tijdfilter wissen', clear: () => this.setState({ maxMin: 0 }) });
+    sources.forEach((src) => activeChips.push({ label: src, aria: 'Bronfilter wissen', clear: () => this.setState({ sources: sources.filter((x) => x !== src) }) }));
+    if (sort !== 'recent') activeChips.push({ label: SORTS[sort], aria: 'Sortering wissen', clear: () => this.setState({ sort: 'recent' }) });
+    const hero = {
+      bg: isAlles ? '#FFFFFF' : ctx.vivid,
+      title: coll !== null ? COLLECTIONS[coll].name : (favOnly && isAlles ? 'Jouw\nfavorieten' : HERO_TITLE[ctxKey]),
+      sub: coll !== null ? 'Collectie · ' + nRec(total) : (favOnly ? nRec(total) + ' met een hartje' : (isAlles && activeCount === 0 ? RECIPES.length + ' recepten in je bibliotheek' : nRec(total) + ' gevonden')),
+      icon: ctx.icon, mark: isAlles ? BRAND : INK, markOpacity: isAlles ? '0.35' : '0.1',
+      logo: isAlles ? BRAND : ctx.vivid
+    };
+
+    const HEART_FILL = 'M240,102c0,70-103.79,126.66-108.21,129a8,8,0,0,1-7.58,0C119.79,228.66,16,172,16,102A62.07,62.07,0,0,1,78,40c20.65,0,38.73,8.88,50,23.89C139.27,48.88,157.35,40,178,40A62.07,62.07,0,0,1,240,102Z';
+    const tabs = [['recipes', 'Recepten', PH.forkKnife], ['favorites', 'Favorieten', HEART_FILL], ['collections', 'Collecties', PH.folder]].map((t) => ({
+      label: t[1], icon: t[2], selected: tab === t[0] ? 'true' : 'false',
+      bg: tab === t[0] ? INK : 'transparent', fg: tab === t[0] ? '#FFFFFF' : INK,
+      pick: () => this.setState({ tab: t[0] }) }));
+
+    // ---------- Navigatie ----------
+    const navActiveBg = screen === 'library' && !isAlles ? ctx.vivid : BRAND;
+    const nav = [['library', 'Recepten', PH.books], ['pantry', 'In huis', PH.basket], ['discover', 'Ontdek', PH.compass], ['more', 'Meer', PH.dots]].map((n) => {
+      const on = screen === n[0];
+      return { label: n[1], icon: n[2], active: on, current: on ? 'page' : 'false',
+        bg: on ? navActiveBg : 'transparent', fg: on ? INK : '#A6A6A6', pad: on ? '0 16px 0 14px' : '0',
+        go: () => go(n[0]) };
+    });
+
+    // ---------- Detail ----------
+    const ings = r.ing.map((g, i) => {
+      const amount = fmtAmount(g.a * servings / r.serv, g.u);
+      const on = !!checked[i];
+      return { amount: amount, name: g.n, line: amount + ' ' + g.n, pressed: on ? 'true' : 'false',
+        color: on ? '#9A9CA1' : INK, deco: on ? 'line-through' : 'none',
+        boxBg: on ? INK : '#FFFFFF', boxBorder: on ? INK : '#CFCFCB',
+        toggle: () => { const nc = Object.assign({}, checked); nc[i] = !on; this.setState({ checked: nc }); } };
+    });
+    const backTarget = s.from && s.from !== 'detail' && s.from !== 'cook' ? s.from : 'library';
+    const stepText = r.steps[step];
+    const tm = /(\d+)\s*minuten/.exec(stepText);
+
+    // ---------- Toevoegen ----------
+    const isAddProp = p.screen === 'add';
+    const link = s.link != null ? s.link : (isAddProp ? 'https://www.leukerecepten.nl/recepten/appelkruimeltaart/' : '');
+    const imported = s.imported != null ? s.imported : (p.imported === true || p.imported === 'true');
+    const pvR = RECIPES[3];
+
+    // ---------- In huis ----------
+    const pantry = s.pantry || PANTRY_DEFAULT;
+    const pantryChips = PANTRY.map((pp) => {
+      const on = pantry.indexOf(pp[0]) >= 0;
+      return { label: pp[1], pressed: on ? 'true' : 'false', glyph: on ? G_CHECK : G_PLUS,
+        bg: on ? INK : '#FFFFFF', fg: on ? '#FFFFFF' : INK,
+        toggle: () => this.setState({ pantry: on ? pantry.filter((x) => x !== pp[0]) : pantry.concat([pp[0]]) }) };
+    });
+    const matches = RECIPES.map((rec, i) => {
+      const hasIt = (g) => !!(g.k && pantry.indexOf(g.k) >= 0);
+      const have = rec.ing.filter(hasIt);
+      const miss = rec.ing.filter((g) => !hasIt(g));
+      const c = CTX[rec.cat];
+      return { n: have.length, frac: have.length / rec.ing.length, title: rec.title, img: IMG[i], vivid: c.vivid,
+        ratio: have.length + '/' + rec.ing.length,
+        dots: rec.ing.map((g) => ({ bg: hasIt(g) ? INK : '#E3E3DF' })),
+        missing: miss.length ? 'Nog nodig: ' + miss.map((g) => g.n).join(', ') : 'Je hebt alles in huis!',
+        open: openRecipe(i) };
+    }).filter((m) => m.n > 0).sort((a, b) => b.frac - a.frac || b.n - a.n).slice(0, 5);
+
+    return {
+      icons: PH,
+      isLibrary: screen === 'library', isDetail: screen === 'detail', isCook: screen === 'cook', isAdd: screen === 'add',
+      isPantry: screen === 'pantry', isDiscover: screen === 'discover', isMore: screen === 'more',
+      showNav: ['library', 'pantry', 'discover', 'more'].indexOf(screen) >= 0,
+      fab: screen === 'library' && !isAlles ? ctx.vivid : BRAND,
+
+      hero: hero, q: q, onQuery: (e) => this.setState({ q: e.target.value }),
+      cats: cats, tabs: tabs,
+      openFilters: () => this.setState({ filterOpen: true }),
+      closeFilters: () => this.setState({ filterOpen: false }),
+      clearFilters: () => this.setState({ maxMin: 0, sources: [], sort: 'recent' }),
+      filterOpen: !!s.filterOpen && screen === 'library',
+      hasFilters: activeCount > 0, filterCount: String(activeCount),
+      timeOpts: timeOpts, sourceOpts: sourceOpts, sortOpts: sortOpts,
+      applyLabel: 'Toon ' + nRec(total),
+      hasActive: activeChips.length > 0 && tab !== 'collections', activeChips: activeChips,
+      newCollection: later('Zelf collecties maken'),
+      hasToast: !!s.toast, toast: s.toast || '',
+      toastBottom: ['library', 'pantry', 'discover', 'more'].indexOf(screen) >= 0 ? '96px' : (screen === 'detail' ? '100px' : '28px'),
+      showRecipes: tab !== 'collections', showCollections: tab === 'collections',
+      emptyTitle: favOnly && !ql && activeCount === 0 ? 'Nog geen favorieten' : 'Niks gevonden',
+      emptyText: favOnly && !ql && activeCount === 0 ? 'Tik op het hartje bij een recept om het hier te bewaren.' : 'Probeer een ander woord of een andere categorie.',
+      countLabel: tab === 'recipes' ? (total === 1 ? '1 recept' : total + ' recepten') : COLLECTIONS.length + ' collecties',
+      showFeatured: showFeatured,
+      feat: { title: fr.title, img: IMG[FEATURED], vivid: fc.vivid, icon: fc.icon, meta: timeLabel(fr.min) + ' · ' + fr.source, open: openRecipe(FEATURED) },
+      columns: [{ cards: left }, { cards: right }], isEmpty: total === 0,
+      collections: COLLECTIONS.map((col, ci) => ({ name: col.name, count: col.ids.length + ' recepten',
+        open: () => this.setState({ coll: ci, tab: 'recipes', ctx: 'alles' }),
+        a: IMG[col.ids[0]], b: IMG[col.ids[1]], c: IMG[col.ids[2]],
+        dots: col.ids.slice(0, 3).map((id) => ({ bg: CTX[RECIPES[id].cat].vivid })) })),
+      goAdd: () => go('add', { imported: false }), goLibrary: () => go('library'),
+      nav: nav,
+
+      d: { title: r.title, img: IMG[rIdx], vivid: rc.vivid, deep: rc.deep, icon: rc.icon, catLabel: rc.label, source: r.source,
+        favBg: isFav(rIdx) ? BRAND : 'rgba(255,255,255,0.9)', favFill: isFav(rIdx) ? 'currentColor' : 'none',
+        favPressed: isFav(rIdx) ? 'true' : 'false', toggleFav: toggleFav(rIdx) },
+      note: (s.notes || {})[rIdx] || '',
+      onNote: (e) => { const nn = Object.assign({}, s.notes || {}); nn[rIdx] = e.target.value; this.setState({ notes: nn }); },
+      shareOpen: !!s.shareOpen && screen === 'detail',
+      openShare: () => this.setState({ shareOpen: true }),
+      closeShare: () => this.setState({ shareOpen: false }),
+      shareOpts: [
+        { icon: PH.share, bg: '#47E3BC', title: 'Als bericht', desc: 'Titel, ingrediënten en link via WhatsApp e.d.',
+          tap: () => { this.setState({ shareOpen: false }); toast('Bericht klaargezet om te delen'); } },
+        { icon: PH.folder, bg: '#FFC738', title: 'Als .eazy-bestand', desc: 'Ontvanger opent het direct in EazyRecipes',
+          tap: () => { this.setState({ shareOpen: false }); toast('Bestand gemaakt: ' + r.title + '.eazy'); } },
+        { icon: PH.sparkle, bg: '#E3E3DF', title: 'Deellink', desc: 'Later: te openen in elke browser',
+          tap: () => { this.setState({ shareOpen: false }); toast('Deellinks komen in een latere fase'); } }
+      ],
+      stats: [
+        { icon: PH.clock, value: timeLabel(r.min), label: 'totaal' },
+        { icon: PH.users, value: String(servings), label: 'porties' },
+        { icon: PH.carrot, value: String(r.ing.length), label: 'ingrediënten' }
+      ],
+      servings: servings,
+      servingsNote: servings === r.serv ? 'zoals het recept' : 'omgerekend van ' + r.serv,
+      dec: () => this.setState({ servings: Math.max(1, servings - 1) }),
+      inc: () => this.setState({ servings: Math.min(24, servings + 1) }),
+      ings: ings,
+      steps: r.steps.map((t, i) => ({ n: pad2(i + 1), text: t })),
+      goBack: () => go(screen === 'cook' ? 'detail' : backTarget),
+      startCook: () => go('cook', { step: 0 }),
+
+      progress: r.steps.map((t, i) => ({ bg: i <= step ? INK : 'rgba(18,18,18,0.16)' })),
+      stepNum: pad2(step + 1), stepOf: 'van ' + pad2(r.steps.length), stepText: stepText,
+      hasTimer: !!tm,
+      timerLabel: tm ? (s.timerOn === rIdx + ':' + step ? 'Timer loopt · ' + tm[1] + ':00' : 'Start timer · ' + tm[1] + ' min') : '',
+      timerPressed: s.timerOn === rIdx + ':' + step ? 'true' : 'false',
+      timerBg: s.timerOn === rIdx + ':' + step ? '#FFFFFF' : INK,
+      timerFg: s.timerOn === rIdx + ':' + step ? INK : '#FFFFFF',
+      toggleTimer: () => {
+        const key = rIdx + ':' + step;
+        const on = s.timerOn === key;
+        this.setState({ timerOn: on ? null : key });
+        toast(on ? 'Timer gestopt' : 'Timer gestart, je krijgt een melding');
+      },
+      cookIngLabel: 'Ingrediënten · ' + servings + ' porties',
+      prevLabel: step === 0 ? 'Terug naar recept' : 'Vorige stap',
+      nextLabel: step === r.steps.length - 1 ? 'Klaar, eet smakelijk!' : 'Volgende stap',
+      prevStep: () => (step === 0 ? go('detail') : this.setState({ step: step - 1 })),
+      nextStep: () => (step === r.steps.length - 1 ? go('detail') : this.setState({ step: step + 1 })),
+
+      link: link, imported: imported,
+      onLink: (e) => this.setState({ link: e.target.value, imported: false }),
+      onImport: () => this.setState({ imported: true }),
+      pv: { title: pvR.title, img: IMG[3], summary: pvR.source + ' · ' + pvR.ing.length + ' ingrediënten · ' + pvR.steps.length + ' stappen' },
+      openPreview: () => go('detail', { recipe: 3, servings: null, checked: {}, step: 0, from: 'add' }),
+      savePreview: () => go('library', { ctx: 'alles', tab: 'recipes', imported: false }),
+      addOptions: [
+        { icon: PH.list, bg: '#FFC738', title: 'Meerdere links', desc: 'Plak een lijst, één link per regel', tap: later('Meerdere links tegelijk') },
+        { icon: PH.bookmark, bg: '#4D9DFF', title: 'Bladwijzers', desc: 'Bestand uit Chrome of Firefox', tap: later('Bladwijzers importeren') },
+        { icon: PH.camera, bg: '#FF8AD4', title: 'Foto of screenshot', desc: 'Kookboek of handgeschreven recept', tap: later('Foto-import') },
+        { icon: PH.pencil, bg: '#47E3BC', title: 'Zelf invoeren', desc: 'Voor recepten zonder bron', tap: later('Zelf invoeren') }
+      ],
+
+      pantryLabel: 'In huis · ' + pantry.length + ' gekozen',
+      pantryChips: pantryChips, matches: matches, noMatches: matches.length === 0,
+
+      sites: [
+        { letter: 'L', bg: '#FF5A4A', name: 'leukerecepten.nl', note: 'Receptgegevens aanwezig, import werkt' },
+        { letter: 'E', bg: '#FFC738', name: 'eefkooktzo.nl', note: 'Via sitemap, met browser-fallback' },
+        { letter: '+', bg: '#E3E3DF', name: 'Jouw favoriete sites', note: 'Voeg later zelf sites toe' }
+      ],
+      moreRows: [
+        { icon: PH.folder, bg: '#FFC738', label: 'Back-up maken', tap: () => toast('Back-up opgeslagen in Downloads') },
+        { icon: PH.bookmark, bg: '#4D9DFF', label: 'Back-up terugzetten', tap: later('Back-up terugzetten') },
+        { icon: PH.share, bg: '#47E3BC', label: 'Bibliotheek delen', tap: later('Je bibliotheek delen') },
+        { icon: PH.chefHat, bg: '#FF8AD4', label: 'Over EazyRecipes', tap: () => toast('EazyRecipes v0.1, gemaakt voor jezelf') }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
