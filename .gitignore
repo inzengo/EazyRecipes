@@ -12,3 +12,5 @@ build/
 *.keystore
 *.jks
 .omc/
+hs_err_pid*.log
+replay_pid*.log

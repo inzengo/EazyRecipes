@@ -54,8 +54,9 @@ Afbeeldingen worden lokaal opgeslagen, zodat recepten offline werken en blijven 
 
 ### Fase 0 — Fundament (nu)
 - [x] Plan, repo, Gradle/Compose-skelet
-- [ ] Toolchain installeren (Android Studio of JDK 17 + Android SDK)
-- [ ] Eerste APK bouwen en op telefoon zetten
+- [x] Toolchain installeren: JDK 17 + Android SDK via CLI op E: (zie `docs/SETUP-WINDOWS.md`)
+- [x] Eerste APK bouwen (`assembleDebug`, 9 MB)
+- [ ] APK op telefoon zetten en delen-menu testen
 
 ### Fase 1 — Importeren
 - Delen-menu ("Delen → EazyRecipes") + link plakken

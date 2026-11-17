@@ -5,10 +5,10 @@ Zie [PLAN.md](PLAN.md) voor besluiten, onderzoek en fases.
 
 ## Bouwen
 
-Vereist: JDK 17 en Android SDK (makkelijkst: Android Studio installeren en deze map openen).
+Vereist: JDK 17 en Android SDK. Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md) voor de command-line installatie op deze machine (alles op E:).
 
 ```sh
 ./gradlew assembleDebug        # Windows: gradlew.bat assembleDebug
 ```
 
-De APK staat daarna in `app/build/outputs/apk/debug/app-debug.apk`. Zet hem op je telefoon (USB of bestand delen) en sta "installeren uit onbekende bronnen" toe.
+Op deze machine komt de APK in `E:\DevTools\builds\EazyRecipes\app\outputs\apk\debug\app-debug.apk`. Zonder het init-script is dat `app/build/outputs/apk/debug/`.
