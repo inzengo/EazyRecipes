@@ -52,6 +52,20 @@ import nl.eazyrecipes.ui.formatMinutes
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import nl.eazyrecipes.data.CollectionSummary
+import nl.eazyrecipes.ui.components.DashedAddButton
+import nl.eazyrecipes.ui.components.Ico
+import nl.eazyrecipes.ui.library.NameDialog
 
 sealed interface DetailState {
     data object Loading : DetailState
@@ -75,6 +89,19 @@ class RecipeViewModel(
     }
 
     private val current: RecipeDetails? get() = (_state.value as? DetailState.Found)?.details
+
+    /** Alle collecties; of dit recept erin zit, volgt uit `recipes`. */
+    val collections: StateFlow<List<CollectionSummary>> =
+        repository.observeCollections().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setInCollection(collectionId: String, member: Boolean) {
+        viewModelScope.launch { repository.setInCollection(collectionId, id, member) }
+    }
+
+    fun createCollectionWithRecipe(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { repository.setInCollection(repository.createCollection(name), id, true) }
+    }
 
     fun toggleFavorite() {
         val d = current ?: return
@@ -114,6 +141,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
     val ctx = r.mainIngredient.context
     val context = LocalContext.current
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var pickCollections by rememberSaveable { mutableStateOf(false) }
 
     val scroll = rememberScrollState()
     Box(Modifier.fillMaxSize().background(Eazy.Paper)) {
@@ -127,6 +155,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                 ) {
                     RoundButton(R.drawable.ic_back, "Terug", onBack)
                     Box(Modifier.weight(1f))
+                    RoundButton(R.drawable.ph_folder, "In collectie zetten", { pickCollections = true })
                     RoundButton(R.drawable.ph_pencil, "Bewerken", onEdit)
                     RoundButton(
                         R.drawable.ph_heart, if (r.favorite) "Uit favorieten" else "Favoriet", vm::toggleFavorite,
@@ -198,6 +227,17 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
         PhotoStatusBar(scroll, PHOTO_HEIGHT)
     }
 
+    if (pickCollections) {
+        val collections by vm.collections.collectAsStateWithLifecycle()
+        CollectionsSheet(
+            recipeId = r.id,
+            collections = collections,
+            onToggle = vm::setInCollection,
+            onCreate = vm::createCollectionWithRecipe,
+            onDismiss = { pickCollections = false },
+        )
+    }
+
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
@@ -209,5 +249,54 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annuleren", color = Eazy.Ink) } },
             containerColor = Eazy.Paper,
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CollectionsSheet(
+    recipeId: String,
+    collections: List<CollectionSummary>,
+    onToggle: (String, Boolean) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var creating by rememberSaveable { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
+        Column(
+            Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("In collectie zetten", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Een recept kan in meerdere collecties staan.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Eazy.Muted,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            collections.forEach { c ->
+                val member = c.recipes.any { it.id == recipeId }
+                Surface(onClick = { onToggle(c.id, !member) }, shape = RoundedCornerShape(22.dp), color = Eazy.Grey) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Box(
+                            Modifier.size(28.dp).clip(CircleShape)
+                                .background(if (member) Eazy.Ink else Eazy.Paper)
+                                .border(2.dp, if (member) Eazy.Ink else Eazy.Dash, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) { if (member) Ico(R.drawable.ic_check, 15.dp, tint = Eazy.Paper) }
+                        Text(c.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Text("${c.recipes.size}", style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
+                    }
+                }
+            }
+            DashedAddButton("Nieuwe collectie", { creating = true })
+        }
+    }
+    if (creating) {
+        NameDialog("Nieuwe collectie", "", "Maken en toevoegen", onConfirm = { onCreate(it); creating = false }, onDismiss = { creating = false })
     }
 }

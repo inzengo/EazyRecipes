@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
+import nl.eazyrecipes.data.CollectionEntity
+import nl.eazyrecipes.data.CollectionSummary
 import nl.eazyrecipes.data.EazyDatabase
 import nl.eazyrecipes.data.MainIngredient
 import nl.eazyrecipes.data.RecipeEntity
@@ -26,6 +28,7 @@ import nl.eazyrecipes.ui.home.HomeScreen
 import nl.eazyrecipes.ui.library.Category
 import nl.eazyrecipes.ui.library.LibraryFilter
 import nl.eazyrecipes.ui.library.LibraryScreen
+import nl.eazyrecipes.ui.library.LibraryTab
 import nl.eazyrecipes.ui.library.LibraryUiState
 import nl.eazyrecipes.ui.library.LibraryViewModel
 import nl.eazyrecipes.ui.library.SortOrder
@@ -133,23 +136,44 @@ class ScreenshotTest {
     ).mapIndexed { i, r -> r.copy(createdAt = i.toLong()) }
 
     @Test fun library_empty() = shot("01-library-empty") {
-        LibraryScreen(libraryState(emptyList()), {}, {}, {}, {})
+        LibraryScreen(libraryState(emptyList()), {}, {}, {})
     }
 
     @Test fun library_filled() = shot("02-library") {
-        LibraryScreen(libraryState(sample), {}, {}, {}, {})
+        LibraryScreen(libraryState(sample), {}, {}, {})
     }
 
     @Config(qualifiers = "w393dp-h1400dp-xxhdpi")
     @Test fun library_category_with_filters() = shot("02b-library-vega-filters") {
-        LibraryScreen(libraryState(sample, LibraryFilter(category = Category.VEGA, maxMinutes = 60, sort = SortOrder.QUICK)), {}, {}, {}, {})
+        LibraryScreen(libraryState(sample, LibraryFilter(category = Category.VEGA, maxMinutes = 60, sort = SortOrder.QUICK)), {}, {}, {})
+    }
+
+    private val sampleCollections by lazy {
+        listOf(
+            CollectionSummary(CollectionEntity("c1", "Doordeweeks", 0, 0), sample.take(3)),
+            CollectionSummary(CollectionEntity("c2", "Feestjes", 0, 0), listOf(sample[1])),
+            CollectionSummary(CollectionEntity("c3", "Nog proberen", 0, 0), emptyList()),
+        )
+    }
+
+    @Config(qualifiers = "w393dp-h1500dp-xxhdpi")
+    @Test fun library_collections_tab() = shot("02d-collections") {
+        LibraryScreen(libraryState(sample, LibraryFilter(tab = LibraryTab.COLLECTIONS)).copy(collections = sampleCollections), {}, {}, {})
+    }
+
+    @Test fun library_open_collection() = shot("02e-collection-open") {
+        val f = LibraryFilter(collectionId = "c1")
+        LibraryScreen(
+            LibraryUiState(3, applyFilter(sample, null, f, sample.take(3).map { it.id }.toSet()), null, f, emptyList(), collections = sampleCollections),
+            {}, {}, {},
+        )
     }
 
     @Test fun home_with_nav() {
         runBlocking { listOf("Soep", "Taart", "Stoof", "Salade").forEach { repo.save(nl.eazyrecipes.importer.ParsedRecipe(title = it)) } }
         val vm = LibraryViewModel(repo) { 0 }
         shot("02c-home-nav", { vm.state.value != null }) {
-            HomeScreen(vm, {}, {}, pantry = {}, collections = {})
+            HomeScreen(vm, {}, {}, pantry = {})
         }
     }
 

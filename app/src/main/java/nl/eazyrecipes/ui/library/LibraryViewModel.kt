@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import nl.eazyrecipes.data.CollectionSummary
 import nl.eazyrecipes.data.MainIngredient
 import nl.eazyrecipes.data.RecipeEntity
 import nl.eazyrecipes.data.RecipeRepository
@@ -46,12 +47,14 @@ data class LibraryFilter(
     val maxMinutes: Int? = null,
     val sources: Set<String> = emptySet(),
     val sort: SortOrder = SortOrder.RECENT,
+    /** Geopende collectie: alleen haar recepten. */
+    val collectionId: String? = null,
 ) {
     /** Aantal filters uit de filter-sheet (voor het bolletje op de filterknop). */
     val sheetCount: Int get() = (if (maxMinutes != null) 1 else 0) + (if (sources.isNotEmpty()) 1 else 0) + (if (sort != SortOrder.RECENT) 1 else 0)
 
     /** Niets gekozen: dan tonen we een uitgelicht recept. */
-    val isPlain: Boolean get() = query.isBlank() && category == Category.ALLES && tab == LibraryTab.RECIPES && sheetCount == 0
+    val isPlain: Boolean get() = query.isBlank() && category == Category.ALLES && tab == LibraryTab.RECIPES && sheetCount == 0 && collectionId == null
 }
 
 data class LibraryUiState(
@@ -62,7 +65,11 @@ data class LibraryUiState(
     val availableSources: List<String>,
     /** Links die al in de bibliotheek staan (voor "link plakken"). */
     val savedUrls: Set<String> = emptySet(),
+    val collections: List<CollectionSummary> = emptyList(),
 ) {
+    /** De collectie die nu open staat (of `null`). */
+    val openCollection: CollectionSummary? get() = filter.collectionId?.let { id -> collections.firstOrNull { it.id == id } }
+
     /** Aantal getoonde recepten, inclusief het uitgelichte. */
     val count: Int get() = shown.size + (if (featured != null) 1 else 0)
 }
@@ -70,8 +77,9 @@ data class LibraryUiState(
 private val dutch: Collator = Collator.getInstance(Locale("nl", "NL")).apply { strength = Collator.PRIMARY }
 
 /** Pure filterlogica (getest in LibraryFilterTest). [ftsIds] = uitkomst van zoeken, of `null` als er niet gezocht wordt. */
-fun applyFilter(all: List<RecipeEntity>, ftsIds: Set<String>?, f: LibraryFilter): List<RecipeEntity> {
+fun applyFilter(all: List<RecipeEntity>, ftsIds: Set<String>?, f: LibraryFilter, inCollection: Set<String>? = null): List<RecipeEntity> {
     val filtered = all.filter { r ->
+        (inCollection == null || r.id in inCollection) &&
         (f.tab != LibraryTab.FAVORITES || r.favorite) &&
             f.category.matches(r) &&
             (ftsIds == null || r.id in ftsIds) &&
@@ -105,19 +113,41 @@ class LibraryViewModel(
     private val ftsIds = combine(filter.map { it.query.trim() }.distinctUntilChanged(), library) { q, _ -> q }
         .mapLatest { q -> if (q.isBlank()) null else repository.search(q).map { it.id }.toSet() }
 
-    val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds) { all, f, ids ->
+    private val collections = repository.observeCollections()
+
+    val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds, collections) { all, f, ids, cols ->
         val featured = featuredFor(all, f, today())
+        // Een collectie die net verwijderd is, toont niets; de UI wist dan het filter.
+        val inCollection = f.collectionId?.let { id -> cols.firstOrNull { it.id == id }?.recipes?.map { it.id }?.toSet() ?: emptySet() }
         LibraryUiState(
             total = all.size,
-            shown = applyFilter(all, ids, f).filter { it.id != featured?.id },
+            shown = applyFilter(all, ids, f, inCollection).filter { it.id != featured?.id },
             featured = featured,
             filter = f,
             availableSources = all.mapNotNull { it.sourceSite }.distinct().sortedWith(dutch),
             savedUrls = all.mapNotNull { it.sourceUrl }.toSet(),
+            collections = cols,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun update(transform: (LibraryFilter) -> LibraryFilter) = filter.update(transform)
+
+    fun openCollection(id: String) = filter.update { it.copy(collectionId = id, tab = LibraryTab.RECIPES) }
+
+    fun createCollection(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { repository.createCollection(name) }
+    }
+
+    fun renameCollection(id: String, name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { repository.renameCollection(id, name) }
+    }
+
+    fun deleteCollection(id: String) {
+        filter.update { if (it.collectionId == id) it.copy(collectionId = null) else it }
+        viewModelScope.launch { repository.deleteCollection(id) }
+    }
 
     fun toggleFavorite(r: RecipeEntity) {
         viewModelScope.launch { repository.setFavorite(r.id, !r.favorite) }

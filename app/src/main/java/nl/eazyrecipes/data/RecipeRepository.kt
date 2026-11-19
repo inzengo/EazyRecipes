@@ -2,6 +2,7 @@ package nl.eazyrecipes.data
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import nl.eazyrecipes.importer.ParsedRecipe
 import nl.eazyrecipes.importer.ParsedStep
 import java.net.URI
@@ -124,6 +125,39 @@ class RecipeRepository(
         dao.deleteFts(id)
     }
 
+    // --- collecties ---
+
+    /** Alle collecties met hun (niet-verwijderde) recepten, in de volgorde waarin ze zijn toegevoegd. */
+    fun observeCollections(): Flow<List<CollectionSummary>> =
+        combine(dao.observeCollections(), dao.observeMemberships(), dao.observeLibrary()) { cols, members, recipes ->
+            val byId = recipes.associateBy { it.id }
+            val membersOf = members.groupBy { it.collectionId }
+            cols.map { c -> CollectionSummary(c, membersOf[c.id].orEmpty().mapNotNull { byId[it.recipeId] }) }
+        }
+
+    suspend fun createCollection(name: String): String {
+        val now = clock()
+        val id = newId()
+        dao.insertCollection(CollectionEntity(id, name.trim(), now, now))
+        return id
+    }
+
+    suspend fun renameCollection(id: String, name: String) = dao.renameCollection(id, name.trim(), clock())
+
+    suspend fun deleteCollection(id: String) = db.withTransaction {
+        val now = clock()
+        dao.softDeleteMemberships(id, now)
+        dao.softDeleteCollection(id, now)
+    }
+
+    /** Zet een recept in of uit een collectie. Opnieuw toevoegen zet het achteraan. */
+    suspend fun setInCollection(collectionId: String, recipeId: String, member: Boolean): Unit = db.withTransaction {
+        val now = clock()
+        val position = dao.nextPosition(collectionId)
+        val updated = dao.updateMembership(collectionId, recipeId, deletedAt = if (member) null else now, position = position, now = now)
+        if (updated == 0 && member) dao.insertMembership(CollectionRecipeEntity(collectionId, recipeId, position, now, now))
+    }
+
     companion object {
         /** Gebruikersinvoer → veilige FTS-query: alleen letters/cijfers, elk woord als prefix. */
         internal fun ftsMatch(text: String): String? =
@@ -135,6 +169,11 @@ class RecipeRepository(
         internal fun siteOf(url: String): String? =
             runCatching { URI(url).host }.getOrNull()?.lowercase()?.removePrefix("www.")
     }
+}
+
+data class CollectionSummary(val collection: CollectionEntity, val recipes: List<RecipeEntity>) {
+    val id: String get() = collection.id
+    val name: String get() = collection.name
 }
 
 data class RecipeDetails(

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
@@ -107,7 +108,7 @@ fun LibraryScreen(
     onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit,
     onToggleFavorite: (RecipeEntity) -> Unit,
     onOpen: (String) -> Unit,
-    collections: @Composable () -> Unit,
+    collectionActions: CollectionActions = CollectionActions(),
 ) {
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
     val f = state?.filter ?: LibraryFilter()
@@ -130,15 +131,19 @@ fun LibraryScreen(
             }
             item(span = StaggeredGridItemSpan.FullLine, key = "tabs") { Tabs(f.tab) { t -> onFilter { it.copy(tab = t) } } }
             if (f.tab != LibraryTab.COLLECTIONS) {
-                item(span = StaggeredGridItemSpan.FullLine, key = "chips") { ActiveChips(f, onFilter) }
+                item(span = StaggeredGridItemSpan.FullLine, key = "chips") { ActiveChips(f, state?.openCollection?.name, onFilter) }
             }
 
             when {
                 state == null -> Unit
-                f.tab == LibraryTab.COLLECTIONS -> item(span = StaggeredGridItemSpan.FullLine, key = "collections") { collections() }
+                f.tab == LibraryTab.COLLECTIONS -> item(span = StaggeredGridItemSpan.FullLine, key = "collections") {
+                    CollectionsGrid(state.collections, collectionActions)
+                }
                 state.total == 0 -> item(span = StaggeredGridItemSpan.FullLine, key = "welcome") { Welcome() }
                 state.shown.isEmpty() && state.featured == null -> item(span = StaggeredGridItemSpan.FullLine, key = "empty") {
-                    if (f.tab == LibraryTab.FAVORITES && f.query.isBlank() && f.category == Category.ALLES && f.sheetCount == 0) {
+                    if (state.openCollection != null && f.query.isBlank() && f.category == Category.ALLES && f.sheetCount == 0) {
+                        Empty("Deze collectie is nog leeg", "Open een recept en tik op het mapje om het hier te zetten.")
+                    } else if (f.tab == LibraryTab.FAVORITES && f.query.isBlank() && f.category == Category.ALLES && f.sheetCount == 0) {
                         Empty("Nog geen favorieten", "Tik op het hartje bij een recept, dan staat het hier.")
                     } else {
                         Empty("Niets gevonden", "Probeer een ander woord of wis een filter.")
@@ -166,11 +171,18 @@ fun LibraryScreen(
 private fun Hero(state: LibraryUiState?, f: LibraryFilter, onQuery: (String) -> Unit, onOpenFilters: () -> Unit) {
     val c = f.category.color
     val plainAlles = f.category == Category.ALLES
-    val title = if (f.tab == LibraryTab.FAVORITES && plainAlles) "Jouw\nfavorieten" else f.category.heroTitle
+    val collection = state?.openCollection
+    val title = when {
+        collection != null -> collection.name
+        f.tab == LibraryTab.FAVORITES && plainAlles -> "Jouw\nfavorieten"
+        else -> f.category.heroTitle
+    }
     val count = state?.count ?: 0
     val sub = when {
         state == null -> ""
+        f.tab == LibraryTab.COLLECTIONS -> state.collections.size.let { if (it == 1) "1 collectie" else "$it collecties" }
         state.total == 0 -> "Nog geen recepten"
+        collection != null -> "Collectie · ${recipes(count)}"
         f.tab == LibraryTab.FAVORITES -> "${recipes(count)} met een hartje"
         f.isPlain -> "${recipes(state.total)} in je bibliotheek"
         else -> "${recipes(count)} gevonden"
@@ -182,9 +194,11 @@ private fun Hero(state: LibraryUiState?, f: LibraryFilter, onQuery: (String) -> 
             .clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp))
             .background(f.heroColor)
     ) {
-        // Watermerk: groot icoon rechtsboven.
-        Box(Modifier.align(Alignment.TopEnd).offset(x = 46.dp, y = (-18).dp)) {
-            Ico(c.icon, 240.dp, tint = if (plainAlles) Eazy.Brand.copy(alpha = 0.35f) else Eazy.Ink.copy(alpha = 0.1f))
+        // Watermerk: groot icoon rechtsboven. matchParentSize: het bepaalt de hoogte van de kop niet mee.
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.align(Alignment.TopEnd).offset(x = 46.dp, y = (-18).dp).wrapContentSize(unbounded = true)) {
+                Ico(c.icon, 240.dp, tint = if (plainAlles) Eazy.Brand.copy(alpha = 0.35f) else Eazy.Ink.copy(alpha = 0.1f))
+            }
         }
         Column(
             Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 22.dp),
@@ -321,8 +335,9 @@ private fun Tabs(selected: LibraryTab, onPick: (LibraryTab) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ActiveChips(f: LibraryFilter, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit) {
+private fun ActiveChips(f: LibraryFilter, collectionName: String?, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit) {
     val chips = buildList {
+        collectionName?.let { add(it to { onFilter { f -> f.copy(collectionId = null) } }) }
         f.maxMinutes?.let { m -> add("≤ ${formatMinutes(m)}" to { onFilter { it.copy(maxMinutes = null) } }) }
         f.sources.forEach { s -> add(s to { onFilter { it.copy(sources = it.sources - s) } }) }
         if (f.sort != SortOrder.RECENT) add(f.sort.label to { onFilter { it.copy(sort = SortOrder.RECENT) } })

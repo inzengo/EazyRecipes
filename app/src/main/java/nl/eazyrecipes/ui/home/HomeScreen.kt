@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +43,7 @@ import nl.eazyrecipes.ui.components.Ico
 import nl.eazyrecipes.ui.components.StatusBarBackdrop
 import nl.eazyrecipes.ui.library.AddLinkSheet
 import nl.eazyrecipes.ui.library.Category
+import nl.eazyrecipes.ui.library.CollectionActions
 import nl.eazyrecipes.ui.library.LibraryScreen
 import nl.eazyrecipes.ui.library.LibraryViewModel
 import nl.eazyrecipes.ui.library.color
@@ -61,7 +63,6 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onImport: (String) -> Unit,
     pantry: @Composable () -> Unit,
-    collections: @Composable () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(HomeTab.LIBRARY) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
@@ -77,7 +78,10 @@ fun HomeScreen(
 
     Box(Modifier.fillMaxSize().background(Eazy.Grey)) {
         when (tab) {
-            HomeTab.LIBRARY -> LibraryScreen(state, library::update, library::toggleFavorite, onOpen, collections)
+            HomeTab.LIBRARY -> LibraryScreen(
+                state, library::update, library::toggleFavorite, onOpen,
+                CollectionActions(library::openCollection, library::createCollection, library::renameCollection, library::deleteCollection),
+            )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
             HomeTab.MORE -> MoreScreen()
@@ -145,7 +149,11 @@ fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, 
     Box(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp)).background(color)
     ) {
-        Box(Modifier.align(Alignment.TopEnd).offset(x = 36.dp, y = (-8).dp)) { Ico(icon, 210.dp, tint = Eazy.Ink.copy(alpha = 0.1f)) }
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.align(Alignment.TopEnd).offset(x = 36.dp, y = (-8).dp).wrapContentSize(unbounded = true)) {
+                Ico(icon, 210.dp, tint = Eazy.Ink.copy(alpha = 0.1f))
+            }
+        }
         Column(
             Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

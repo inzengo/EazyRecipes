@@ -141,6 +141,39 @@ class RecipeRepositoryTest {
     }
 
     @Test
+    fun `collecties - toevoegen, weghalen, opnieuw, hernoemen, verwijderen`() = runTest {
+        val kip = repo.save(kipKerrie)
+        val taart = repo.save(appeltaart)
+        val week = repo.createCollection("  Doordeweeks ")
+        val feest = repo.createCollection("Feest")
+
+        repo.setInCollection(week, kip, true)
+        repo.setInCollection(week, taart, true)
+        repo.setInCollection(feest, taart, true)
+        var cols = repo.observeCollections().first()
+        assertEquals(listOf("Doordeweeks", "Feest"), cols.map { it.name })
+        assertEquals("volgorde van toevoegen", listOf(kip, taart), cols[0].recipes.map { it.id })
+        assertEquals("recept in meerdere collecties", listOf(taart), cols[1].recipes.map { it.id })
+
+        repo.setInCollection(week, kip, false)
+        assertEquals(listOf(taart), repo.observeCollections().first()[0].recipes.map { it.id })
+        repo.setInCollection(week, kip, true)
+        assertEquals("opnieuw toegevoegd komt achteraan", listOf(taart, kip), repo.observeCollections().first()[0].recipes.map { it.id })
+
+        repo.renameCollection(feest, "Verjaardag")
+        repo.delete(taart)
+        cols = repo.observeCollections().first()
+        assertEquals("Verjaardag", cols[1].name)
+        assertEquals("verwijderd recept verdwijnt uit collecties", listOf(kip), cols[0].recipes.map { it.id })
+
+        repo.deleteCollection(week)
+        assertEquals(listOf("Verjaardag"), repo.observeCollections().first().map { it.name })
+        assertTrue("recept zelf blijft bestaan", repo.get(kip) != null)
+        val tombstones = db.query("SELECT COUNT(*) FROM collection_recipe WHERE deletedAt IS NOT NULL", null)
+        tombstones.use { it.moveToFirst(); assertTrue("soft-delete voor sync", it.getInt(0) >= 1) }
+    }
+
+    @Test
     fun `favoriet zetten werkt updatedAt bij, bibliotheek nieuwste eerst`() = runTest {
         val a = repo.save(kipKerrie)
         now = 1_500L

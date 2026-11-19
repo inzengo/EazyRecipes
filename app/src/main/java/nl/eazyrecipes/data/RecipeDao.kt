@@ -55,6 +55,36 @@ interface RecipeDao {
     @Query("UPDATE recipe SET deletedAt = :now, updatedAt = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
 
+    // --- collecties ---
+
+    @Insert
+    suspend fun insertCollection(c: CollectionEntity)
+
+    @Query("UPDATE collection SET name = :name, updatedAt = :now WHERE id = :id")
+    suspend fun renameCollection(id: String, name: String, now: Long)
+
+    @Query("UPDATE collection SET deletedAt = :now, updatedAt = :now WHERE id = :id")
+    suspend fun softDeleteCollection(id: String, now: Long)
+
+    @Query("UPDATE collection_recipe SET deletedAt = :now, updatedAt = :now WHERE collectionId = :id AND deletedAt IS NULL")
+    suspend fun softDeleteMemberships(id: String, now: Long)
+
+    @Insert
+    suspend fun insertMembership(m: CollectionRecipeEntity)
+
+    /** @return aantal bijgewerkte rijen (0 = bestond nog niet). */
+    @Query("UPDATE collection_recipe SET deletedAt = :deletedAt, updatedAt = :now, position = :position WHERE collectionId = :collectionId AND recipeId = :recipeId")
+    suspend fun updateMembership(collectionId: String, recipeId: String, deletedAt: Long?, position: Int, now: Long): Int
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM collection_recipe WHERE collectionId = :collectionId")
+    suspend fun nextPosition(collectionId: String): Int
+
+    @Query("SELECT * FROM collection WHERE deletedAt IS NULL ORDER BY createdAt")
+    fun observeCollections(): Flow<List<CollectionEntity>>
+
+    @Query("SELECT * FROM collection_recipe WHERE deletedAt IS NULL ORDER BY position")
+    fun observeMemberships(): Flow<List<CollectionRecipeEntity>>
+
     // --- lezen (altijd zonder soft-deleted rijen) ---
 
     @Query("SELECT * FROM recipe WHERE deletedAt IS NULL ORDER BY createdAt DESC")

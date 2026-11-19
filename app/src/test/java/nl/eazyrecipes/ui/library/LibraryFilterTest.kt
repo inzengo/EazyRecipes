@@ -39,6 +39,12 @@ class LibraryFilterTest {
         assertEquals("alles tegelijk (EN)", listOf("Kip kerrie"), ids(LibraryFilter(tab = LibraryTab.FAVORITES, category = Category.SNEL)))
     }
 
+    @Test fun `binnen een collectie`() {
+        assertEquals(listOf("Zalm", "Kip kerrie"), applyFilter(all, null, LibraryFilter(collectionId = "x"), inCollection = setOf("Kip kerrie", "Zalm")).map { it.id })
+        assertEquals("lege of verwijderde collectie", emptyList<String>(), applyFilter(all, null, LibraryFilter(collectionId = "x"), inCollection = emptySet()).map { it.id })
+        assertNull("geen uitgelicht recept in een collectie", featuredFor(all, LibraryFilter(collectionId = "x"), 20_000))
+    }
+
     @Test fun sorteren() {
         assertEquals("snelste eerst, onbekend achteraan", listOf("Pasta pesto", "Zalm", "Kip kerrie", "Appeltaart", "Linzensoep"), ids(LibraryFilter(sort = SortOrder.QUICK)))
         assertEquals(listOf("Appeltaart", "Kip kerrie", "Linzensoep", "Pasta pesto", "Zalm"), ids(LibraryFilter(sort = SortOrder.AZ)))

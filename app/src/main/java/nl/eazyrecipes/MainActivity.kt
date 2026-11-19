@@ -62,7 +62,6 @@ class MainActivity : ComponentActivity() {
                             onOpen = { nav.navigate(Routes.recipe(it)) },
                             onImport = { nav.navigate(Routes.import(it)) },
                             pantry = { ComingSoon("In huis", "Komt in het volgende deel van fase 3.") },
-                            collections = { ComingSoon("Collecties", "Komt in het volgende deel van fase 3.") },
                         )
                     }
                     composable(
