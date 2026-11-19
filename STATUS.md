@@ -1,6 +1,6 @@
 # Status — EazyRecipes
 
-_Laatst bijgewerkt: 2026-11-19_
+_Laatst bijgewerkt: 2026-11-19 (avond)_
 
 ## Waar staan we
 
@@ -8,7 +8,8 @@ _Laatst bijgewerkt: 2026-11-19_
 |---|---|
 | 0 — Fundament (repo, skelet, toolchain, eerste APK) | ✅ klaar |
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
-| 2 — Data + import | ✅ klaar (nog een controle van de laatste aanpassingen op de telefoon) |
+| 2 — Data + import | ✅ klaar |
+| 3 — Bibliotheek & vinden | 🚧 3a + 3b klaar, **3c (In huis) volgende** |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -71,20 +72,32 @@ _Laatst bijgewerkt: 2026-11-19_
 - **Kookmodus:** het scherm vult zich met de receptkleur, met een groot stapnummer. Noemt een stap een tijd ("10 minuten"), dan komt er een timerknop bij. Het scherm blijft aan.
 - **In huis:** ingrediënten aantikken. Je ziet dan de recepten die het best passen, met een score ("4/6") en wat je nog mist.
 
-## Volgende stap: fase 2 (data + import)
+## Volgende stap: fase 3c — "In huis"
 
-1. ✅ Datamodel in Room: UUID's, `updatedAt`, `deletedAt`, en FTS voor zoeken.
-2. ✅ JSON-LD-parser met unit tests op opgeslagen echte pagina's.
-3. ✅ Ophalen: HTTP-fetch, WebView-fallback, foto lokaal. ⚠️ De WebView-route is nog niet op een echt toestel getest; dat kan pas op de telefoon.
-4. ✅ Delen-menu en link plakken → voorbeeldscherm → opslaan.
-5. ✅ Het design-systeem in Compose: thema, fonts, kleuren, Phosphor-iconen.
-6. ✅ **Eerste test op de telefoon** (2026-11-19). Delen, eefkooktzo.nl (WebView) en foto's werken.
-   Op basis van de feedback aangepast:
-   - de statusbalk-iconen zijn altijd donker, en wit boven een foto;
-   - "Soort" is één chip met een keuzemenu;
-   - de hinttekst is weg;
-   - "link plakken" vult geen link in die al in de bibliotheek staat, en onthoudt je tekst als je het venster per ongeluk sluit.
-   - Tweede ronde: het klembord wordt gelezen zodra het venster focus heeft, ook links die als URI gekopieerd zijn. Er is een Plakken-knop bij, en recepten zijn te bewerken. Niet opnieuw op de telefoon getest (afgesproken).
+Gedaan in fase 3:
+- **3a** (`881b71a`): bibliotheek volgens de mockup (zoeken, categorie-tegels, tabs, filter-sheet, uitgelicht recept, navigatiebalk). Ontdek en Meer zijn tussenpagina's.
+- **3b** (`9e192e8`): collecties (tab, openen = gefilterde bibliotheek, hernoemen en verwijderen, mapje op het detailscherm).
+- Eerder: recepten bewerken en een robuuster klembord (`ebf161b`). Nog niet op de telefoon getest (afgesproken).
+
+**Plan voor 3c.** Het tabblad "In huis" toont nu `ComingSoon(...)`, via de `pantry`-parameter van `HomeScreen` in `MainActivity`.
+1. `ui/pantry/PantryMatcher.kt` (pure Kotlin + unit tests):
+   - **Lijst ingrediënten:** een vaste lijst van ~50 veelvoorkomende ingrediënten met varianten, bijvoorbeeld kip = kip, kipfilet, kippendij, …
+   - **Matchen:** op hele woorden of woordgroepen, zonder hoofdletters en accenten. Zo telt "kippenbouillon" als bouillon, niet als kip.
+   - **Wat niet meetelt:** zout, peper, olie, water, "optioneel:"- en "naar smaak"-regels tellen niet mee als "nog nodig".
+   - **Eigen woorden:** matchen op het begin van een woord.
+   - **Score:** het aandeel regels dat je hebt. Alleen recepten met ten minste één treffer, de hoogste score eerst, maximaal 12.
+   - **"Nog nodig":** de naam zonder hoeveelheid ("200 gr kipfilet" → "kipfilet").
+   - **Chips:** alleen lijst-items die in je eigen recepten voorkomen, de meest gebruikte eerst.
+2. **Data:** een DAO-query met alle ingrediëntregels van niet-verwijderde recepten (Flow) en een repository-methode die per recept de regels geeft.
+3. **`PantryViewModel`:** onthoudt je keuze en eigen woorden in SharedPreferences, zodat ze na het afsluiten blijven staan.
+4. **`PantryScreen` volgens de mockup:**
+   - lavendel kop "Wat heb je in huis?";
+   - chips: zwart met ✓ = gekozen, wit met + = niet gekozen;
+   - een veld "iets anders";
+   - een lijst "Hiermee kun je aan de slag": foto, titel, streepjes per ingrediënt, "Nog nodig: …" en een score-rondje ("4/6") in de receptkleur. Tik opent het recept.
+5. **Tests:** screenshot-test, STATUS bijwerken, commit.
+
+Daarna: **fase 4** (kookmodus, porties omrekenen, notities, delen als tekst of `.eazy`, back-up). Zie PLAN.md.
 
 ## Open punten
 
