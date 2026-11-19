@@ -41,6 +41,8 @@ import nl.eazyrecipes.data.RecipeDetails
 import nl.eazyrecipes.data.RecipeRepository
 import nl.eazyrecipes.importer.ImageStore
 import nl.eazyrecipes.ui.components.Chip
+import nl.eazyrecipes.ui.components.PhotoStatusBar
+import nl.eazyrecipes.ui.components.PhotoTopScrim
 import nl.eazyrecipes.ui.components.RecipePhoto
 import nl.eazyrecipes.ui.components.RoundButton
 import nl.eazyrecipes.ui.components.StatTile
@@ -100,6 +102,8 @@ fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit) {
     }
 }
 
+private val PHOTO_HEIGHT = 320.dp
+
 @Composable
 private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit) {
     val r = d.recipe
@@ -107,81 +111,86 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().background(Eazy.Paper).verticalScroll(rememberScrollState())) {
-        Box(Modifier.fillMaxWidth().height(320.dp)) {
-            RecipePhoto(r.imagePath, r.imageUrl, ctx, Modifier.fillMaxSize(), iconSize = 160.dp)
-            Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+    val scroll = rememberScrollState()
+    Box(Modifier.fillMaxSize().background(Eazy.Paper)) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+            Box(Modifier.fillMaxWidth().height(PHOTO_HEIGHT)) {
+                RecipePhoto(r.imagePath, r.imageUrl, ctx, Modifier.fillMaxSize(), iconSize = 160.dp)
+                PhotoTopScrim()
+                Row(
+                    Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RoundButton(R.drawable.ic_back, "Terug", onBack)
+                    Box(Modifier.weight(1f))
+                    RoundButton(
+                        R.drawable.ph_heart, if (r.favorite) "Uit favorieten" else "Favoriet", vm::toggleFavorite,
+                        background = if (r.favorite) Eazy.Brand else Eazy.Paper.copy(alpha = 0.9f),
+                    )
+                }
+            }
+            Column(
+                Modifier.offset(y = (-36).dp).background(Eazy.Paper, TopRounded).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 40.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                RoundButton(R.drawable.ic_back, "Terug", onBack)
-                Box(Modifier.weight(1f))
-                RoundButton(
-                    R.drawable.ph_heart, if (r.favorite) "Uit favorieten" else "Favoriet", vm::toggleFavorite,
-                    background = if (r.favorite) Eazy.Brand else Eazy.Paper.copy(alpha = 0.9f),
-                )
-            }
-        }
-        Column(
-            Modifier.offset(y = (-36).dp).background(Eazy.Paper, TopRounded).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 40.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(ctx.label, ctx.icon, ctx.vivid)
-                r.sourceSite?.let { site ->
-                    Chip(site, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted, onClick = {
-                        r.sourceUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
-                    })
-                }
-            }
-            Text(r.title, style = MaterialTheme.typography.headlineMedium)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile(R.drawable.ph_clock, "totaal", ctx, Modifier.weight(1f)) {
-                    Text(formatMinutes(r.totalMinutes) ?: "–", style = MaterialTheme.typography.titleLarge)
-                }
-                StatTile(R.drawable.ph_users, "porties", ctx, Modifier.weight(1f)) {
-                    Text(r.servings?.toString() ?: "–", style = MaterialTheme.typography.titleLarge)
-                }
-                StatTile(R.drawable.ph_basket, "ingrediënten", ctx, Modifier.weight(1f)) {
-                    Text("${d.ingredients.size}", style = MaterialTheme.typography.titleLarge)
-                }
-            }
-
-            if (d.ingredients.isNotEmpty()) Column {
-                Text("Ingrediënten", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 6.dp))
-                d.ingredients.forEach {
-                    Text(it.raw, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 14.dp))
-                    HorizontalDivider(color = Eazy.Line)
-                }
-            }
-
-            if (d.steps.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Bereiding", style = MaterialTheme.typography.headlineSmall)
-                val multipleSections = d.steps.mapNotNull { it.sectionName }.distinct().size > 1
-                d.steps.forEachIndexed { i, step ->
-                    if (multipleSections && step.sectionName != null && step.sectionName != d.steps.getOrNull(i - 1)?.sectionName) {
-                        Text(step.sectionName, style = MaterialTheme.typography.titleMedium, color = Eazy.Muted, modifier = Modifier.padding(top = 6.dp))
-                    }
-                    Row(
-                        Modifier.fillMaxWidth().background(Eazy.Grey, MaterialTheme.shapes.medium).padding(horizontal = 16.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        Text("${i + 1}", style = MaterialTheme.typography.headlineSmall, color = ctx.deep, modifier = Modifier.width(24.dp))
-                        Text(step.text, style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Chip(ctx.label, ctx.icon, ctx.vivid)
+                    r.sourceSite?.let { site ->
+                        Chip(site, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted, onClick = {
+                            r.sourceUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
+                        })
                     }
                 }
-            }
+                Text(r.title, style = MaterialTheme.typography.headlineMedium)
 
-            if (d.tags.isNotEmpty()) {
-                Text(d.tags.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = Eazy.Subtle)
-            }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile(R.drawable.ph_clock, "totaal", ctx, Modifier.weight(1f)) {
+                        Text(formatMinutes(r.totalMinutes) ?: "–", style = MaterialTheme.typography.titleLarge)
+                    }
+                    StatTile(R.drawable.ph_users, "porties", ctx, Modifier.weight(1f)) {
+                        Text(r.servings?.toString() ?: "–", style = MaterialTheme.typography.titleLarge)
+                    }
+                    StatTile(R.drawable.ph_basket, "ingrediënten", ctx, Modifier.weight(1f)) {
+                        Text("${d.ingredients.size}", style = MaterialTheme.typography.titleLarge)
+                    }
+                }
 
-            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("Recept verwijderen", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+                if (d.ingredients.isNotEmpty()) Column {
+                    Text("Ingrediënten", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 6.dp))
+                    d.ingredients.forEach {
+                        Text(it.raw, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 14.dp))
+                        HorizontalDivider(color = Eazy.Line)
+                    }
+                }
+
+                if (d.steps.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Bereiding", style = MaterialTheme.typography.headlineSmall)
+                    val multipleSections = d.steps.mapNotNull { it.sectionName }.distinct().size > 1
+                    d.steps.forEachIndexed { i, step ->
+                        if (multipleSections && step.sectionName != null && step.sectionName != d.steps.getOrNull(i - 1)?.sectionName) {
+                            Text(step.sectionName, style = MaterialTheme.typography.titleMedium, color = Eazy.Muted, modifier = Modifier.padding(top = 6.dp))
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().background(Eazy.Grey, MaterialTheme.shapes.medium).padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Text("${i + 1}", style = MaterialTheme.typography.headlineSmall, color = ctx.deep, modifier = Modifier.width(24.dp))
+                            Text(step.text, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                if (d.tags.isNotEmpty()) {
+                    Text(d.tags.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = Eazy.Subtle)
+                }
+
+                TextButton(onClick = { confirmDelete = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text("Recept verwijderen", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+                }
             }
         }
+        PhotoStatusBar(scroll, PHOTO_HEIGHT)
     }
 
     if (confirmDelete) {

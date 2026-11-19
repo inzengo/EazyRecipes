@@ -74,21 +74,22 @@ fun Chip(
     modifier: Modifier = Modifier,
     contentColor: Color = Eazy.Ink,
     onClick: (() -> Unit)? = null,
-    selected: Boolean = false,
+    /** Klein icoon achteraan, bv. een pijltje dat laat zien dat er een keuzemenu achter zit. */
+    @DrawableRes trailing: Int? = null,
 ) {
     val content: @Composable () -> Unit = {
         Row(
-            Modifier.height(36.dp).padding(start = if (icon != null) 9.dp else 14.dp, end = 14.dp),
+            Modifier.height(36.dp).padding(start = if (icon != null) 9.dp else 14.dp, end = if (trailing != null) 10.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (icon != null) Ico(icon, 18.dp)
             Text(label, style = MaterialTheme.typography.labelMedium)
+            if (trailing != null) Ico(trailing, 14.dp)
         }
     }
-    val border = if (selected) Modifier.border(2.dp, Eazy.Ink, CircleShape) else Modifier
     if (onClick != null) {
-        Surface(onClick = onClick, shape = CircleShape, color = background, contentColor = contentColor, modifier = modifier.then(border)) { content() }
+        Surface(onClick = onClick, shape = CircleShape, color = background, contentColor = contentColor, modifier = modifier) { content() }
     } else {
         Surface(shape = CircleShape, color = background, contentColor = contentColor, modifier = modifier) { content() }
     }

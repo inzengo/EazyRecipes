@@ -49,6 +49,7 @@ import nl.eazyrecipes.importer.RecipeImporter
 import nl.eazyrecipes.ui.components.BigPillButton
 import nl.eazyrecipes.ui.components.Ico
 import nl.eazyrecipes.ui.components.RecipePhoto
+import nl.eazyrecipes.ui.components.StatusBarBackdrop
 import nl.eazyrecipes.ui.components.TimeBadge
 import nl.eazyrecipes.ui.formatMinutes
 import nl.eazyrecipes.ui.theme.Eazy
@@ -58,6 +59,8 @@ import nl.eazyrecipes.ui.theme.isQuick
 @Composable
 fun LibraryScreen(recipes: List<RecipeEntity>?, onOpen: (String) -> Unit, onImport: (String) -> Unit) {
     var addOpen by rememberSaveable { mutableStateOf(false) }
+    // Wat er in "link plakken" stond toen het venster (per ongeluk) dicht ging; leeg na een import.
+    var draft by rememberSaveable { mutableStateOf("") }
 
     Box(Modifier.fillMaxSize().background(Eazy.Grey)) {
         LazyVerticalStaggeredGrid(
@@ -86,9 +89,31 @@ fun LibraryScreen(recipes: List<RecipeEntity>?, onOpen: (String) -> Unit, onImpo
         ) {
             Box(contentAlignment = Alignment.Center) { Ico(R.drawable.ic_plus, 26.dp, contentDescription = "Recept toevoegen") }
         }
+
+        StatusBarBackdrop(Eazy.Grey)
     }
 
-    if (addOpen) AddLinkSheet(onDismiss = { addOpen = false }, onSubmit = { addOpen = false; onImport(it) })
+    if (addOpen) {
+        AddLinkSheet(
+            draft = draft,
+            savedUrls = remember(recipes) { recipes.orEmpty().mapNotNull { it.sourceUrl }.toSet() },
+            onDismiss = { text -> draft = text; addOpen = false },
+            onSubmit = { url -> draft = ""; addOpen = false; onImport(url) },
+        )
+    }
+}
+
+/**
+ * Wat staat er al in het veld als "link plakken" opent?
+ * 1. tekst van de vorige keer, als het venster zonder importeren dicht ging;
+ * 2. anders een link van het klembord, tenzij dat recept al in de bibliotheek staat;
+ * 3. anders niets.
+ */
+internal fun initialLinkText(draft: String, clipboard: String?, savedUrls: Set<String>): String {
+    if (draft.isNotBlank()) return draft
+    val link = clipboard?.let { Regex("""https?://\S+""").find(it)?.value } ?: return ""
+    val clean = RecipeImporter.cleanUrl(link) ?: return ""
+    return if (clean in savedUrls) "" else link
 }
 
 @Composable
@@ -162,17 +187,14 @@ private fun RecipeCard(r: RecipeEntity, tall: Boolean, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddLinkSheet(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
+private fun AddLinkSheet(draft: String, savedUrls: Set<String>, onDismiss: (String) -> Unit, onSubmit: (String) -> Unit) {
     val clipboard = LocalClipboardManager.current
-    // Staat er een link op het klembord? Dan alvast invullen.
-    var text by remember {
-        mutableStateOf(clipboard.getText()?.text?.let { Regex("""https?://\S+""").find(it)?.value }.orEmpty())
-    }
+    var text by remember { mutableStateOf(initialLinkText(draft, clipboard.getText()?.text, savedUrls)) }
     val valid = RecipeImporter.cleanUrl(text) != null
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
+    ModalBottomSheet(onDismissRequest = { onDismiss(text) }, containerColor = Eazy.Paper) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(14.dp),

@@ -8,7 +8,7 @@ _Laatst bijgewerkt: 2026-11-19_
 |---|---|
 | 0 — Fundament (repo, skelet, toolchain, eerste APK) | ✅ klaar |
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
-| 2 — Data + import | 🚧 **bijna klaar**: alleen de test op de telefoon nog |
+| 2 — Data + import | ✅ klaar (nog een controle van de laatste aanpassingen op de telefoon) |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -22,7 +22,7 @@ _Laatst bijgewerkt: 2026-11-19_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 56 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 60 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -78,12 +78,12 @@ _Laatst bijgewerkt: 2026-11-19_
 3. ✅ Ophalen: HTTP-fetch, WebView-fallback, foto lokaal. ⚠️ De WebView-route is nog niet op een echt toestel getest; dat kan pas op de telefoon.
 4. ✅ Delen-menu en link plakken → voorbeeldscherm → opslaan.
 5. ✅ Het design-systeem in Compose: thema, fonts, kleuren, Phosphor-iconen.
-6. **Eerste test op de telefoon.** Te controleren, omdat dit niet in tests te dekken is:
-   - delen vanuit Chrome;
-   - een eefkooktzo.nl-link (de WebView-route);
-   - foto's laden;
-   - toetsenbord over het voorbeeldscherm;
-   - het klembord bij "link plakken".
+6. ✅ **Eerste test op de telefoon** (2026-11-19). Delen, eefkooktzo.nl (WebView) en foto's werken.
+   Op basis van de feedback aangepast:
+   - de statusbalk-iconen zijn altijd donker, en wit boven een foto;
+   - "Soort" is één chip met een keuzemenu;
+   - de hinttekst is weg;
+   - "link plakken" vult geen link in die al in de bibliotheek staat, en onthoudt je tekst als je het venster per ongeluk sluit.
 
 ## Open punten
 

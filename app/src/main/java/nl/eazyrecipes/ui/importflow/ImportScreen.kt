@@ -1,7 +1,6 @@
 package nl.eazyrecipes.ui.importflow
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +22,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +31,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +52,8 @@ import nl.eazyrecipes.ui.components.Chip
 import nl.eazyrecipes.ui.components.DashedAddButton
 import nl.eazyrecipes.ui.components.ErrorCard
 import nl.eazyrecipes.ui.components.Ico
+import nl.eazyrecipes.ui.components.PhotoStatusBar
+import nl.eazyrecipes.ui.components.PhotoTopScrim
 import nl.eazyrecipes.ui.components.RecipePhoto
 import nl.eazyrecipes.ui.components.RoundButton
 import nl.eazyrecipes.ui.components.StatTile
@@ -115,11 +122,14 @@ private fun FailedView(s: ImportUiState.Failed, onRetry: () -> Unit, onClose: ()
 private fun EditView(s: ImportUiState.Editing, vm: ImportViewModel, onClose: () -> Unit, onOpenExisting: (String) -> Unit) {
     val d = s.draft
     val ctx = d.mainIngredient.context
+    val scroll = rememberScrollState()
+    var pickKind by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(Eazy.Paper)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             // --- foto ---
-            Box(Modifier.fillMaxWidth().height(300.dp)) {
+            Box(Modifier.fillMaxWidth().height(PHOTO_HEIGHT)) {
                 RecipePhoto(null, d.imageUrl, ctx, Modifier.fillMaxSize(), iconSize = 160.dp)
+                PhotoTopScrim()
                 RoundButton(R.drawable.ic_close, "Niet opslaan", onClose, Modifier.statusBarsPadding().padding(16.dp))
             }
             // --- witte kaart over de foto ---
@@ -127,13 +137,13 @@ private fun EditView(s: ImportUiState.Editing, vm: ImportViewModel, onClose: () 
                 Modifier.offset(y = (-36).dp).background(Eazy.Paper, TopRounded).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                Text("Voorbeeld: controleer en pas aan", style = MaterialTheme.typography.labelLarge, color = Eazy.Muted)
-
                 if (s.duplicateOf != null) DuplicateBanner { onOpenExisting(s.duplicateOf) }
 
-                ContextPicker(d.mainIngredient) { pick -> vm.edit { it.copy(mainIngredient = pick) } }
-
-                siteLabel(d.sourceUrl)?.let { Chip(it, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted) }
+                // Soort = een gok van de importer; één tik om te corrigeren, verder geen aandacht.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Chip(ctx.label, ctx.icon, ctx.vivid, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down)
+                    siteLabel(d.sourceUrl)?.let { Chip(it, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted) }
+                }
 
                 EditableText(
                     value = d.title,
@@ -203,8 +213,20 @@ private fun EditView(s: ImportUiState.Editing, vm: ImportViewModel, onClose: () 
                 enabled = s.canSave,
             )
         }
+
+        PhotoStatusBar(scroll, PHOTO_HEIGHT)
+    }
+
+    if (pickKind) {
+        KindSheet(
+            selected = d.mainIngredient,
+            onPick = { pick -> vm.edit { it.copy(mainIngredient = pick) }; pickKind = false },
+            onDismiss = { pickKind = false },
+        )
     }
 }
+
+private val PHOTO_HEIGHT = 300.dp
 
 @Composable
 private fun DuplicateBanner(onOpen: () -> Unit) {
@@ -222,15 +244,33 @@ private fun DuplicateBanner(onOpen: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ContextPicker(selected: MainIngredient?, onPick: (MainIngredient) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Soort", style = MaterialTheme.typography.labelLarge, color = Eazy.Muted)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun KindSheet(selected: MainIngredient?, onPick: (MainIngredient) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding()) {
+            Text("Soort recept", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Bepaalt de kleur en straks het filter in je bibliotheek.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Eazy.Muted,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+            )
             MainIngredient.entries.forEach { m ->
                 val c = m.context
-                val on = m == selected
-                Chip(c.label, c.icon, if (on) c.vivid else Eazy.Grey, onClick = { onPick(m) }, selected = on)
+                Surface(onClick = { onPick(m) }, color = Color.Transparent, shape = MaterialTheme.shapes.medium) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(c.vivid), contentAlignment = Alignment.Center) {
+                            Ico(c.icon, 22.dp, tint = Eazy.Ink)
+                        }
+                        Text(c.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        if (m == selected) Ico(R.drawable.ic_check, 22.dp, tint = Eazy.Ink, contentDescription = "Gekozen")
+                    }
+                }
             }
         }
     }
@@ -305,7 +345,7 @@ private fun StepEditor(number: Int, step: ParsedStep, ctx: ContextColor, onChang
 
 @Composable
 private fun RemoveButton(onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = CircleShape, color = androidx.compose.ui.graphics.Color.Transparent, contentColor = Eazy.Subtle, modifier = Modifier.size(40.dp)) {
+    Surface(onClick = onClick, shape = CircleShape, color = Color.Transparent, contentColor = Eazy.Subtle, modifier = Modifier.size(40.dp)) {
         Box(contentAlignment = Alignment.Center) { Ico(R.drawable.ic_close, 16.dp, contentDescription = "Verwijderen") }
     }
 }
