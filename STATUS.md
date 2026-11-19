@@ -8,7 +8,7 @@ _Laatst bijgewerkt: 2026-11-19_
 |---|---|
 | 0 — Fundament (repo, skelet, toolchain, eerste APK) | ✅ klaar |
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
-| 2 — Data + import | 🚧 **bezig**: datamodel, parser en ophalen klaar; nu de schermen |
+| 2 — Data + import | 🚧 **bijna klaar**: alleen de test op de telefoon nog |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -22,7 +22,14 @@ _Laatst bijgewerkt: 2026-11-19_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 41 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 56 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Schermen (Compose, design v0.2):**
+  - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
+  - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
+  - Eenvoudig detailscherm: favoriet, bronlink, verwijderen.
+  - Delen-menu → importscherm.
+- **Design-systeem:** `ui/theme/Theme.kt` (kleuren, contextkleuren, typografie), `ui/components/`. Fonts staan als variabele TTF in `res/font` (licenties in `docs/licenses/`). De Phosphor-iconen zijn als vectoren omgezet uit de mockup (`res/drawable/ph_*.xml`).
+- **Screenshots zonder telefoon:** `ScreenshotTest` tekent de schermen naar `app/build/screenshots/` (Robolectric, offline).
 - **Toolchain:** JDK 17, Android SDK, Gradle-cache en build-output staan allemaal op `E:\DevTools`. Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md).
 - **Design-mockups:** klikbaar canvas → https://claude.ai/artifact/6UDLioCa2cawBMaDYd1Wjm
   (privé). De broncode staat in `docs/design/mockups/` (`Main.dc.html` = prototype v0.2, `Versie1.dc.html` = eerste versie ter vergelijking).
@@ -69,14 +76,19 @@ _Laatst bijgewerkt: 2026-11-19_
 1. ✅ Datamodel in Room: UUID's, `updatedAt`, `deletedAt`, en FTS voor zoeken.
 2. ✅ JSON-LD-parser met unit tests op opgeslagen echte pagina's.
 3. ✅ Ophalen: HTTP-fetch, WebView-fallback, foto lokaal. ⚠️ De WebView-route is nog niet op een echt toestel getest; dat kan pas op de telefoon.
-4. Delen-menu en link plakken → voorbeeldscherm → opslaan.
-5. Het design-systeem in Compose zetten: thema, fonts, kleuren, Phosphor-iconen.
-6. **Eerste test op de telefoon.**
+4. ✅ Delen-menu en link plakken → voorbeeldscherm → opslaan.
+5. ✅ Het design-systeem in Compose: thema, fonts, kleuren, Phosphor-iconen.
+6. **Eerste test op de telefoon.** Te controleren, omdat dit niet in tests te dekken is:
+   - delen vanuit Chrome;
+   - een eefkooktzo.nl-link (de WebView-route);
+   - foto's laden;
+   - toetsenbord over het voorbeeldscherm;
+   - het klembord bij "link plakken".
 
 ## Open punten
 
 - Gradle-geheugen is verhoogd naar `-Xmx2g` / 1 GB metaspace. Dat is getest met een `clean` + build + tests.
-- `build`-mappen zijn nu junctions naar E: (nodig voor KSP). Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md#5-gradle-build-output-en-temp-naar-e).
+- `build`-mappen zijn nu junctions naar E: (nodig voor KSP en screenshot-tests). `clean` wist via het junction-pad. Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md#5-gradle-build-output-en-temp-naar-e).
 - De hoofdingrediënt-gok (`MainIngredientGuesser`) is een heuristiek. In het voorbeeldscherm moet de gebruiker hem kunnen aanpassen.
 - Welke sites komen er naast leukerecepten.nl en eefkooktzo.nl bij Ontdekken (latere fase)?
 - Foto's in de mockup komen van Unsplash. In de app gebruiken we de foto van de bron, die lokaal wordt opgeslagen.

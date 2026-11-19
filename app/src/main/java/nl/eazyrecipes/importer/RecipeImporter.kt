@@ -21,7 +21,8 @@ class RecipeImporter(
     private val http: PageFetcher,
     private val browser: PageFetcher?,
 ) {
-    suspend fun import(rawUrl: String): ImportResult {
+    /** @param onBrowserFallback wordt aangeroepen vlak voordat de (tragere) browser-route start. */
+    suspend fun import(rawUrl: String, onBrowserFallback: () -> Unit = {}): ImportResult {
         val url = cleanUrl(rawUrl) ?: return ImportResult.Failed(ImportResult.Reason.INVALID_URL)
 
         val first = http.fetch(url)
@@ -33,6 +34,7 @@ class RecipeImporter(
             is FetchResult.Failed -> false // geen netwerk: de WebView gaat ook niet helpen
         }
         if (tryBrowser && browser != null) {
+            onBrowserFallback()
             when (val second = browser.fetch(url)) {
                 is FetchResult.Page -> return parse(second)?.let { ImportResult.Success(it, usedBrowser = true) }
                     ?: ImportResult.NoRecipe(url)

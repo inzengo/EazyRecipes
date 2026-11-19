@@ -35,8 +35,9 @@ android {
     }
     testOptions {
         unitTests {
-            // Geen isIncludeAndroidResources: dat faalt als de build-map op een andere schijf staat (E: vs C:),
-            // en de Room-tests hebben geen Android-resources nodig.
+            // Nodig voor de screenshot-tests (fonts, iconen). Werkt alleen doordat app/build een junction is
+            // (zelfde schijf als het project); zie docs/SETUP-WINDOWS.md.
+            isIncludeAndroidResources = true
             all {
                 // Robolectric downloadt android-all naar ~/.m2; dat houden we van C: af.
                 it.systemProperty("user.home", "E:/DevTools/robolectric-home")
@@ -58,6 +59,12 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -72,4 +79,6 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
 }

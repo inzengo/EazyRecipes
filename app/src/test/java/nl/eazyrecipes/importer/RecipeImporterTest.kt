@@ -33,8 +33,10 @@ class RecipeImporterTest {
     @Test
     fun `403 van Cloudflare - browser haalt het recept`() = runTest {
         val browser = Fake(FetchResult.Page(recipeHtml, "https://eef.nl/soep/"))
-        val r = RecipeImporter(Fake(FetchResult.HttpError(403)), browser).import("https://eef.nl/soep/")
+        var notified = 0
+        val r = RecipeImporter(Fake(FetchResult.HttpError(403)), browser).import("https://eef.nl/soep/") { notified++ }
         assertTrue(r is ImportResult.Success && r.usedBrowser)
+        assertEquals("UI hoort dat het langer duurt", 1, notified)
         assertEquals(listOf("https://eef.nl/soep/"), browser.calls)
     }
 

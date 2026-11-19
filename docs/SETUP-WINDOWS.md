@@ -77,9 +77,10 @@ gradle.beforeProject {
     val link = File(projectDir, "build")
     // `clean` zou de junction zelf weggooien → alleen de inhoud op E: wissen.
     // afterEvaluate, zodat dit ná de base-plugin komt (die voegt `build` anders opnieuw toe).
+    // Via het junction-pad (C:) wissen: anders merkt Gradle niet dat de outputs weg zijn.
     afterEvaluate {
         tasks.withType(Delete::class.java).matching { it.name == "clean" }.configureEach {
-            setDelete(provider { target.listFiles()?.toList().orEmpty() })
+            setDelete(provider { link.listFiles()?.toList().orEmpty() })
         }
     }
     if (Files.exists(link.toPath())) {

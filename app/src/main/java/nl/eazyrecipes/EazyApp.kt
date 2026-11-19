@@ -1,0 +1,24 @@
+package nl.eazyrecipes
+
+import android.app.Application
+import android.content.Context
+import nl.eazyrecipes.data.EazyDatabase
+import nl.eazyrecipes.data.RecipeRepository
+import nl.eazyrecipes.importer.HttpPageFetcher
+import nl.eazyrecipes.importer.ImageStore
+import nl.eazyrecipes.importer.RecipeImporter
+import nl.eazyrecipes.importer.WebViewPageFetcher
+import java.io.File
+
+class EazyApp : Application() {
+    val container by lazy { AppContainer(this) }
+}
+
+/** Handmatige dependency-injectie: één plek waar alles wordt aangemaakt. */
+class AppContainer(context: Context) {
+    val repository = RecipeRepository(EazyDatabase.get(context))
+    val images = ImageStore(File(context.filesDir, "images"))
+    val importer = RecipeImporter(http = HttpPageFetcher(), browser = WebViewPageFetcher(context))
+}
+
+val Context.container: AppContainer get() = (applicationContext as EazyApp).container

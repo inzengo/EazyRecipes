@@ -1,0 +1,141 @@
+package nl.eazyrecipes.ui
+
+import android.graphics.Bitmap
+import androidx.compose.runtime.Composable
+import android.graphics.Canvas
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.runBlocking
+import nl.eazyrecipes.data.EazyDatabase
+import nl.eazyrecipes.data.MainIngredient
+import nl.eazyrecipes.data.RecipeEntity
+import nl.eazyrecipes.data.RecipeRepository
+import nl.eazyrecipes.importer.FetchResult
+import nl.eazyrecipes.importer.ImageStore
+import nl.eazyrecipes.importer.JsonLdRecipeParser
+import nl.eazyrecipes.importer.RecipeImporter
+import nl.eazyrecipes.ui.detail.DetailState
+import nl.eazyrecipes.ui.detail.RecipeScreen
+import nl.eazyrecipes.ui.detail.RecipeViewModel
+import nl.eazyrecipes.ui.importflow.ImportScreen
+import nl.eazyrecipes.ui.importflow.ImportUiState
+import nl.eazyrecipes.ui.importflow.ImportViewModel
+import nl.eazyrecipes.ui.library.LibraryScreen
+import nl.eazyrecipes.ui.theme.EazyTheme
+import okhttp3.OkHttpClient
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.io.File
+import java.io.IOException
+
+/**
+ * Tekent de schermen als PNG naar de map `app/build/screenshots`, om het design te controleren zonder telefoon of emulator.
+ * Foto's laden hier bewust niet (Coil zonder netwerk), dus je ziet de foto-loze variant: een vlak in de contextkleur.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "w393dp-h852dp-xxhdpi")
+class ScreenshotTest {
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val tmp = TemporaryFolder()
+
+    private lateinit var db: EazyDatabase
+    private lateinit var repo: RecipeRepository
+    private val noNetwork = OkHttpClient.Builder().addInterceptor { throw IOException("geen netwerk") }.build()
+    private val url = "https://www.leukerecepten.nl/recepten/kip-kerrie/"
+    private val html by lazy { checkNotNull(javaClass.getResource("/pages/leukerecepten-kip-kerrie.html")).readText() }
+
+    @OptIn(coil3.annotation.DelicateCoilApi::class)
+    @Before fun setUp() {
+        // Coil zou anders zelf foto's van internet halen: tests moeten offline en voorspelbaar zijn.
+        coil3.SingletonImageLoader.setUnsafe { ctx ->
+            coil3.ImageLoader.Builder(ctx).components {
+                add(coil3.intercept.Interceptor { chain ->
+                    if (chain.request.data is String) coil3.request.ErrorResult(null, chain.request, IOException("geen netwerk in test"))
+                    else chain.proceed()
+                })
+            }.build()
+        }
+        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java)
+            .allowMainThreadQueries().build()
+        repo = RecipeRepository(db)
+    }
+
+    @After fun tearDown() = db.close()
+
+    /** @param ready wacht hierop ná setContent (pas dan draait de main-looper van Robolectric door). */
+    private fun shot(name: String, ready: () -> Boolean = { true }, state: () -> Any? = { null }, content: @Composable () -> Unit) {
+        compose.setContent { EazyTheme(content) }
+        // Ruime limiet: de eerste test in een run warmt de Robolectric-sandbox op (~20 s).
+        runCatching { compose.waitUntil(60_000, ready) }.onFailure { throw AssertionError("$name niet klaar: ${state()}", it) }
+        compose.waitForIdle()
+        // Zelf tekenen: captureToImage() wacht onder Robolectric eindeloos op een hertekening.
+        val view = compose.activity.window.decorView
+        val bmp = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bmp))
+        File("build/screenshots").apply { mkdirs() }.resolve("$name.png").outputStream().use {
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+
+    private fun recipe(title: String, m: MainIngredient, minutes: Int?, fav: Boolean = false) = RecipeEntity(
+        id = title, title = title, mainIngredient = m, totalMinutes = minutes, favorite = fav, createdAt = 0, updatedAt = 0,
+    )
+
+    private fun importVm(fetch: FetchResult) =
+        ImportViewModel(url, RecipeImporter({ fetch }, null), repo, ImageStore(tmp.newFolder(), noNetwork))
+
+    @Test fun library_empty() = shot("01-library-empty") { LibraryScreen(emptyList(), {}, {}) }
+
+    @Test fun library_filled() = shot("02-library") {
+        LibraryScreen(
+            listOf(
+                recipe("Kip kerrie: romig en vers gemaakt", MainIngredient.VLEES, 30, fav = true),
+                recipe("Appelkruimeltaart", MainIngredient.ZOET, 100),
+                recipe("Zalm uit de oven met citroen", MainIngredient.VIS, 25),
+                recipe("Champignon bourguignon", MainIngredient.VEGA, 60),
+                recipe("Linzensoep", MainIngredient.VEGAN, 45),
+                recipe("Griekse aardappelstoof", MainIngredient.VEGA, 50),
+            ),
+            {}, {},
+        )
+    }
+
+    @Test fun import_loading() = shot("03-import-loading") {
+        // Nooit klaar, zodat de laad-toestand blijft staan.
+        val vm = ImportViewModel(url, RecipeImporter({ kotlinx.coroutines.awaitCancellation() }, null), repo, ImageStore(tmp.newFolder(), noNetwork))
+        ImportScreen(url, vm, {}, {}, {})
+    }
+
+    @Test fun import_failed() {
+        val vm = importVm(FetchResult.HttpError(404))
+        shot("04-import-failed", { vm.state.value is ImportUiState.Failed }) { ImportScreen(url, vm, {}, {}, {}) }
+    }
+
+    @Test fun import_preview() {
+        val vm = importVm(FetchResult.Page(html, url))
+        shot("05-import-preview", { vm.state.value is ImportUiState.Editing }) { ImportScreen(url, vm, {}, {}, {}) }
+    }
+
+    @Config(qualifiers = "w393dp-h2600dp-xxhdpi")
+    @Test fun import_preview_full() {
+        val vm = importVm(FetchResult.Page(html, url))
+        shot("06-import-preview-full", { vm.state.value is ImportUiState.Editing }, { vm.state.value }) { ImportScreen(url, vm, {}, {}, {}) }
+    }
+
+    @Config(qualifiers = "w393dp-h2200dp-xxhdpi")
+    @Test fun detail_full() {
+        val id = runBlocking { repo.save(checkNotNull(JsonLdRecipeParser.parse(html, url))) }
+        val vm = RecipeViewModel(id, repo, ImageStore(tmp.newFolder(), noNetwork))
+        shot("07-detail-full", { vm.state.value is DetailState.Found }) { RecipeScreen(vm, {}) }
+    }
+}

@@ -1,3 +1,5 @@
 <resources>
-    <style name="Theme.EazyRecipes" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.EazyRecipes" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/eazy_grey</item>
+    </style>
 </resources>
