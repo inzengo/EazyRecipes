@@ -8,7 +8,7 @@ _Laatst bijgewerkt: 2026-11-19_
 |---|---|
 | 0 — Fundament (repo, skelet, toolchain, eerste APK) | ✅ klaar |
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
-| 2 — Data + import | 🚧 **bezig**: datamodel + parser klaar, nu importflow |
+| 2 — Data + import | 🚧 **bezig**: datamodel, parser en ophalen klaar; nu de schermen |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -18,8 +18,11 @@ _Laatst bijgewerkt: 2026-11-19_
   Nog **niet** op een telefoon getest.
 - **Datamodel (Room 2.7, KSP2):** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, plus de FTS4-index `recipe_fts`. Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
   Zoeken: elk woord als prefix ("kipf" vindt "kipfilet"), zonder accenten ("creme" vindt "crème"). Schema-export staat in `app/schemas/`.
-- **Importer:** `app/src/main/java/nl/eazyrecipes/importer/`. `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
-- **Tests:** `./gradlew testDebugUnitTest`, 23 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Importer:** `app/src/main/java/nl/eazyrecipes/importer/`.
+  - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
+  - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
+  - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
+- **Tests:** `./gradlew testDebugUnitTest`, 41 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Toolchain:** JDK 17, Android SDK, Gradle-cache en build-output staan allemaal op `E:\DevTools`. Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md).
 - **Design-mockups:** klikbaar canvas → https://claude.ai/artifact/6UDLioCa2cawBMaDYd1Wjm
   (privé). De broncode staat in `docs/design/mockups/` (`Main.dc.html` = prototype v0.2, `Versie1.dc.html` = eerste versie ter vergelijking).
@@ -65,7 +68,7 @@ _Laatst bijgewerkt: 2026-11-19_
 
 1. ✅ Datamodel in Room: UUID's, `updatedAt`, `deletedAt`, en FTS voor zoeken.
 2. ✅ JSON-LD-parser met unit tests op opgeslagen echte pagina's.
-3. Ophalen: HTTP-fetch, met een WebView-fallback bij 403 (eefkooktzo.nl). Foto lokaal opslaan.
+3. ✅ Ophalen: HTTP-fetch, WebView-fallback, foto lokaal. ⚠️ De WebView-route is nog niet op een echt toestel getest; dat kan pas op de telefoon.
 4. Delen-menu en link plakken → voorbeeldscherm → opslaan.
 5. Het design-systeem in Compose zetten: thema, fonts, kleuren, Phosphor-iconen.
 6. **Eerste test op de telefoon.**
