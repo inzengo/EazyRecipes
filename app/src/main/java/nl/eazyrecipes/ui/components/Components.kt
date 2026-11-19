@@ -95,19 +95,21 @@ fun Chip(
     }
 }
 
-/** Tijd-label op een kaart: geel "Snel"-vlak bij ≤ 30 min, anders wit. */
+/** Tijd-label op een kaart (zoals de mockup): geel "Snel · 25 min" bij ≤ 30 min, anders donker met witte tekst. */
 @Composable
 fun TimeBadge(text: String, quick: Boolean, modifier: Modifier = Modifier) {
+    val fg = if (quick) Eazy.Ink else Eazy.Paper
     Row(
         modifier
             .clip(CircleShape)
-            .background(if (quick) Eazy.Snel.vivid else Eazy.Paper.copy(alpha = 0.92f))
-            .padding(horizontal = 9.dp, vertical = 5.dp),
+            .background(if (quick) Eazy.Snel.vivid else Eazy.Ink.copy(alpha = 0.74f))
+            .height(26.dp)
+            .padding(horizontal = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Ico(if (quick) R.drawable.ph_lightning else R.drawable.ph_clock, 13.dp, tint = Eazy.Ink)
-        Text(text, style = MaterialTheme.typography.labelSmall, color = Eazy.Ink)
+        Ico(if (quick) R.drawable.ph_lightning else R.drawable.ph_clock, 13.dp, tint = fg)
+        Text(if (quick) "Snel · $text" else text, style = MaterialTheme.typography.labelSmall, color = fg)
     }
 }
 
@@ -127,8 +129,10 @@ fun StatTile(@DrawableRes icon: Int, label: String, ctx: ContextColor, modifier:
 /** Foto van het recept: lokale kopie als die er is, anders de bron-URL; zonder foto een vlak in de contextkleur. */
 @Composable
 fun RecipePhoto(imagePath: String?, imageUrl: String?, ctx: ContextColor, modifier: Modifier = Modifier, iconSize: Dp = 72.dp) {
-    Box(modifier.background(ctx.vivid), contentAlignment = Alignment.Center) {
-        Ico(ctx.icon, iconSize, tint = Eazy.Ink.copy(alpha = 0.18f))
+    // Zonder soort ("Alles" = inkt) zou het vlak zwart worden: dan het neutrale grijs uit de mockup.
+    val neutral = ctx == Eazy.Alles
+    Box(modifier.background(if (neutral) Eazy.Placeholder else ctx.vivid), contentAlignment = Alignment.Center) {
+        Ico(ctx.icon, iconSize, tint = Eazy.Ink.copy(alpha = if (neutral) 0.08f else 0.18f))
         val model: Any? = imagePath?.let(::File) ?: imageUrl
         if (model != null) {
             AsyncImage(model = model, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())

@@ -22,7 +22,15 @@ import nl.eazyrecipes.ui.detail.RecipeViewModel
 import nl.eazyrecipes.ui.importflow.ImportScreen
 import nl.eazyrecipes.ui.importflow.ImportUiState
 import nl.eazyrecipes.ui.importflow.ImportViewModel
+import nl.eazyrecipes.ui.home.HomeScreen
+import nl.eazyrecipes.ui.library.Category
+import nl.eazyrecipes.ui.library.LibraryFilter
 import nl.eazyrecipes.ui.library.LibraryScreen
+import nl.eazyrecipes.ui.library.LibraryUiState
+import nl.eazyrecipes.ui.library.LibraryViewModel
+import nl.eazyrecipes.ui.library.SortOrder
+import nl.eazyrecipes.ui.library.applyFilter
+import nl.eazyrecipes.ui.library.featuredFor
 import nl.eazyrecipes.ui.theme.EazyTheme
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -100,27 +108,49 @@ class ScreenshotTest {
         }
     }
 
-    private fun recipe(title: String, m: MainIngredient, minutes: Int?, fav: Boolean = false) = RecipeEntity(
-        id = title, title = title, mainIngredient = m, totalMinutes = minutes, favorite = fav, createdAt = 0, updatedAt = 0,
+    private fun recipe(title: String, m: MainIngredient, minutes: Int?, fav: Boolean = false, site: String? = null) = RecipeEntity(
+        id = title, title = title, mainIngredient = m, totalMinutes = minutes, favorite = fav, sourceSite = site, createdAt = 0, updatedAt = 0,
     )
 
     private fun importVm(fetch: FetchResult) =
         ImportViewModel(url, RecipeImporter({ fetch }, null), repo, ImageStore(tmp.newFolder(), noNetwork))
 
-    @Test fun library_empty() = shot("01-library-empty") { LibraryScreen(emptyList(), {}, {}) }
+    private fun libraryState(recipes: List<RecipeEntity>, f: LibraryFilter = LibraryFilter()) = LibraryUiState(
+        total = recipes.size,
+        shown = applyFilter(recipes, null, f).let { list -> featuredFor(recipes, f, 0)?.let { ft -> list - ft } ?: list },
+        featured = featuredFor(recipes, f, 0),
+        filter = f,
+        availableSources = listOf("eefkooktzo.nl", "leukerecepten.nl"),
+    )
+
+    private val sample = listOf(
+        recipe("Kip kerrie: romig en vers gemaakt", MainIngredient.VLEES, 30, fav = true, site = "leukerecepten.nl"),
+        recipe("Appelkruimeltaart", MainIngredient.ZOET, 100, site = "leukerecepten.nl"),
+        recipe("Zalm uit de oven met citroen", MainIngredient.VIS, 25, site = "eefkooktzo.nl"),
+        recipe("Champignon bourguignon", MainIngredient.VEGA, 60, site = "leukerecepten.nl"),
+        recipe("Linzensoep", MainIngredient.VEGAN, 45, site = "eefkooktzo.nl"),
+        recipe("Griekse aardappelstoof", MainIngredient.VEGA, 50, site = "leukerecepten.nl"),
+    ).mapIndexed { i, r -> r.copy(createdAt = i.toLong()) }
+
+    @Test fun library_empty() = shot("01-library-empty") {
+        LibraryScreen(libraryState(emptyList()), {}, {}, {}, {})
+    }
 
     @Test fun library_filled() = shot("02-library") {
-        LibraryScreen(
-            listOf(
-                recipe("Kip kerrie: romig en vers gemaakt", MainIngredient.VLEES, 30, fav = true),
-                recipe("Appelkruimeltaart", MainIngredient.ZOET, 100),
-                recipe("Zalm uit de oven met citroen", MainIngredient.VIS, 25),
-                recipe("Champignon bourguignon", MainIngredient.VEGA, 60),
-                recipe("Linzensoep", MainIngredient.VEGAN, 45),
-                recipe("Griekse aardappelstoof", MainIngredient.VEGA, 50),
-            ),
-            {}, {},
-        )
+        LibraryScreen(libraryState(sample), {}, {}, {}, {})
+    }
+
+    @Config(qualifiers = "w393dp-h1400dp-xxhdpi")
+    @Test fun library_category_with_filters() = shot("02b-library-vega-filters") {
+        LibraryScreen(libraryState(sample, LibraryFilter(category = Category.VEGA, maxMinutes = 60, sort = SortOrder.QUICK)), {}, {}, {}, {})
+    }
+
+    @Test fun home_with_nav() {
+        runBlocking { listOf("Soep", "Taart", "Stoof", "Salade").forEach { repo.save(nl.eazyrecipes.importer.ParsedRecipe(title = it)) } }
+        val vm = LibraryViewModel(repo) { 0 }
+        shot("02c-home-nav", { vm.state.value != null }) {
+            HomeScreen(vm, {}, {}, pantry = {}, collections = {})
+        }
     }
 
     @Test fun import_loading() = shot("03-import-loading") {

@@ -31,6 +31,8 @@ object Eazy {
     val Muted = Color(0xFF5E6066)
     val Subtle = Color(0xFF8A8C91)
     val Brand = Color(0xFF9B8CFF)
+    /** Vlak achter een foto die (nog) ontbreekt, bij een recept zonder soort. */
+    val Placeholder = Color(0xFFDADAD6)
     val Snel = ContextColor("Snel", Color(0xFFFFC738), Color(0xFF8F5800), R.drawable.ph_lightning)
     val Alles = ContextColor("Alles", Ink, Ink, R.drawable.ph_fork_knife)
 }

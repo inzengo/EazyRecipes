@@ -11,9 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -26,7 +24,9 @@ import nl.eazyrecipes.ui.editor.EditRecipeScreen
 import nl.eazyrecipes.ui.editor.EditRecipeViewModel
 import nl.eazyrecipes.ui.importflow.ImportScreen
 import nl.eazyrecipes.ui.importflow.ImportViewModel
-import nl.eazyrecipes.ui.library.LibraryScreen
+import nl.eazyrecipes.ui.home.ComingSoon
+import nl.eazyrecipes.ui.home.HomeScreen
+import nl.eazyrecipes.ui.library.LibraryViewModel
 import nl.eazyrecipes.ui.theme.EazyTheme
 
 class MainActivity : ComponentActivity() {
@@ -56,11 +56,13 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(nav, startDestination = Routes.LIBRARY) {
                     composable(Routes.LIBRARY) {
-                        val recipes by remember { c.repository.observeLibrary() }.collectAsStateWithLifecycle(initialValue = null)
-                        LibraryScreen(
-                            recipes = recipes,
+                        val library = viewModel { LibraryViewModel(c.repository) }
+                        HomeScreen(
+                            library = library,
                             onOpen = { nav.navigate(Routes.recipe(it)) },
                             onImport = { nav.navigate(Routes.import(it)) },
+                            pantry = { ComingSoon("In huis", "Komt in het volgende deel van fase 3.") },
+                            collections = { ComingSoon("Collecties", "Komt in het volgende deel van fase 3.") },
                         )
                     }
                     composable(
