@@ -3,6 +3,7 @@ package nl.eazyrecipes.data
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import nl.eazyrecipes.importer.ParsedRecipe
+import nl.eazyrecipes.importer.ParsedStep
 import java.net.URI
 import java.util.UUID
 
@@ -43,12 +44,7 @@ class RecipeRepository(
                 updatedAt = now,
             )
         )
-        dao.insertIngredients(parsed.ingredients.mapIndexed { i, raw ->
-            IngredientEntity(newId(), id, i, raw, now, now)
-        })
-        dao.insertSteps(parsed.steps.mapIndexed { i, s ->
-            StepEntity(newId(), id, i, s.section, s.text, now, now)
-        })
+        insertChildren(id, parsed, now)
         val tagIds = parsed.tags.map { name ->
             val key = name.lowercase()
             dao.insertTag(TagEntity(newId(), name, key, now, now))
@@ -64,6 +60,45 @@ class RecipeRepository(
             )
         )
         id
+    }
+
+    /**
+     * Slaat een bewerkt recept op. Ingrediënten en stappen worden in zijn geheel vervangen: het recept is de
+     * eenheid van sync (zijn `updatedAt` verandert), dus losse rijen hoeven geen eigen geschiedenis te hebben.
+     * Tags, notitie, favoriet en bron blijven zoals ze waren.
+     */
+    suspend fun update(id: String, edited: ParsedRecipe): Unit = db.withTransaction {
+        val old = dao.recipe(id)?.takeIf { it.deletedAt == null } ?: error("Recept $id bestaat niet")
+        val now = clock()
+        dao.updateRecipe(
+            old.copy(
+                title = edited.title,
+                description = edited.description,
+                servings = edited.servings,
+                prepMinutes = edited.prepMinutes,
+                cookMinutes = edited.cookMinutes,
+                totalMinutes = edited.totalMinutes,
+                mainIngredient = edited.mainIngredient,
+                updatedAt = now,
+            )
+        )
+        dao.deleteIngredients(id)
+        dao.deleteSteps(id)
+        insertChildren(id, edited, now)
+        dao.deleteFts(id)
+        dao.insertFts(
+            RecipeFtsEntity(
+                recipeId = id,
+                title = edited.title,
+                ingredients = edited.ingredients.joinToString("\n"),
+                tags = dao.tagNames(id).joinToString("\n"),
+            )
+        )
+    }
+
+    private suspend fun insertChildren(id: String, r: ParsedRecipe, now: Long) {
+        dao.insertIngredients(r.ingredients.mapIndexed { i, raw -> IngredientEntity(newId(), id, i, raw, now, now) })
+        dao.insertSteps(r.steps.mapIndexed { i, s -> StepEntity(newId(), id, i, s.section, s.text, now, now) })
     }
 
     suspend fun get(id: String): RecipeDetails? {
@@ -107,4 +142,23 @@ data class RecipeDetails(
     val ingredients: List<IngredientEntity>,
     val steps: List<StepEntity>,
     val tags: List<String>,
-)
+) {
+    /** Als bewerkbaar concept voor de editor. */
+    fun toDraft(): ParsedRecipe = ParsedRecipe(
+        title = recipe.title,
+        description = recipe.description,
+        sourceUrl = recipe.sourceUrl,
+        imageUrl = recipe.imageUrl,
+        servings = recipe.servings,
+        yieldText = recipe.yieldText,
+        prepMinutes = recipe.prepMinutes,
+        cookMinutes = recipe.cookMinutes,
+        totalMinutes = recipe.totalMinutes,
+        category = recipe.category,
+        cuisine = recipe.cuisine,
+        mainIngredient = recipe.mainIngredient,
+        tags = tags,
+        ingredients = ingredients.map { it.raw },
+        steps = steps.map { ParsedStep(it.text, it.sectionName) },
+    )
+}

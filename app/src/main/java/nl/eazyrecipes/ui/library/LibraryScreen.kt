@@ -1,5 +1,7 @@
 package nl.eazyrecipes.ui.library
 
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -103,6 +107,8 @@ fun LibraryScreen(recipes: List<RecipeEntity>?, onOpen: (String) -> Unit, onImpo
     }
 }
 
+internal fun linkIn(text: String): String? = Regex("""https?://\S+""").find(text)?.value
+
 /**
  * Wat staat er al in het veld als "link plakken" opent?
  * 1. tekst van de vorige keer, als het venster zonder importeren dicht ging;
@@ -111,7 +117,7 @@ fun LibraryScreen(recipes: List<RecipeEntity>?, onOpen: (String) -> Unit, onImpo
  */
 internal fun initialLinkText(draft: String, clipboard: String?, savedUrls: Set<String>): String {
     if (draft.isNotBlank()) return draft
-    val link = clipboard?.let { Regex("""https?://\S+""").find(it)?.value } ?: return ""
+    val link = clipboard?.let(::linkIn) ?: return ""
     val clean = RecipeImporter.cleanUrl(link) ?: return ""
     return if (clean in savedUrls) "" else link
 }
@@ -188,13 +194,22 @@ private fun RecipeCard(r: RecipeEntity, tall: Boolean, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddLinkSheet(draft: String, savedUrls: Set<String>, onDismiss: (String) -> Unit, onSubmit: (String) -> Unit) {
-    val clipboard = LocalClipboardManager.current
-    var text by remember { mutableStateOf(initialLinkText(draft, clipboard.getText()?.text, savedUrls)) }
+    val context = LocalContext.current
+    // Wat we automatisch invulden; dat bewaren we niet als "jouw tekst" bij per ongeluk sluiten.
+    var prefilled by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(draft) }
     val valid = RecipeImporter.cleanUrl(text) != null
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
 
-    ModalBottomSheet(onDismissRequest = { onDismiss(text) }, containerColor = Eazy.Paper) {
+    ModalBottomSheet(onDismissRequest = { onDismiss(if (text == prefilled) "" else text) }, containerColor = Eazy.Paper) {
+        // Android geeft het klembord pas vrij als ons venster focus heeft: lees het (opnieuw) zodra dat zo is.
+        val windowFocused = LocalWindowInfo.current.isWindowFocused
+        LaunchedEffect(windowFocused) {
+            if (windowFocused && text.isEmpty()) {
+                initialLinkText("", readClipboard(context), savedUrls).takeIf { it.isNotEmpty() }?.let { text = it; prefilled = it }
+            }
+            if (windowFocused) focus.requestFocus()
+        }
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -208,6 +223,12 @@ private fun AddLinkSheet(draft: String, savedUrls: Set<String>, onDismiss: (Stri
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium,
                 leadingIcon = { Ico(R.drawable.ic_link, 20.dp) },
+                trailingIcon = {
+                    // Vangnet als automatisch invullen niet lukt: één tik, en dan mag Android het klembord altijd lezen.
+                    if (text.isEmpty()) TextButton(onClick = {
+                        readClipboard(context)?.let { clip -> text = linkIn(clip) ?: clip.trim() }
+                    }) { Text("Plakken", style = MaterialTheme.typography.labelLarge, color = Eazy.Ink) }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { if (valid) onSubmit(text.trim()) }),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Eazy.Ink, cursorColor = Eazy.Ink),
@@ -217,3 +238,9 @@ private fun AddLinkSheet(draft: String, savedUrls: Set<String>, onDismiss: (Stri
         }
     }
 }
+
+/** Klembord als tekst; `coerceToText` vangt ook links die als URI (niet als tekst) gekopieerd zijn. */
+private fun readClipboard(context: Context): String? = runCatching {
+    val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip
+    if (clip == null || clip.itemCount == 0) null else clip.getItemAt(0).coerceToText(context)?.toString()
+}.getOrNull()

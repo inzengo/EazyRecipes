@@ -22,11 +22,11 @@ _Laatst bijgewerkt: 2026-11-19_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 60 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 61 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
-  - Eenvoudig detailscherm: favoriet, bronlink, verwijderen.
+  - Eenvoudig detailscherm: favoriet, bronlink, **bewerken** (dezelfde editor als bij importeren), verwijderen.
   - Delen-menu → importscherm.
 - **Design-systeem:** `ui/theme/Theme.kt` (kleuren, contextkleuren, typografie), `ui/components/`. Fonts staan als variabele TTF in `res/font` (licenties in `docs/licenses/`). De Phosphor-iconen zijn als vectoren omgezet uit de mockup (`res/drawable/ph_*.xml`).
 - **Screenshots zonder telefoon:** `ScreenshotTest` tekent de schermen naar `app/build/screenshots/` (Robolectric, offline).
@@ -84,6 +84,7 @@ _Laatst bijgewerkt: 2026-11-19_
    - "Soort" is één chip met een keuzemenu;
    - de hinttekst is weg;
    - "link plakken" vult geen link in die al in de bibliotheek staat, en onthoudt je tekst als je het venster per ongeluk sluit.
+   - Tweede ronde: het klembord wordt gelezen zodra het venster focus heeft, ook links die als URI gekopieerd zijn. Er is een Plakken-knop bij, en recepten zijn te bewerken. Niet opnieuw op de telefoon getest (afgesproken).
 
 ## Open punten
 

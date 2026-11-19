@@ -106,6 +106,41 @@ class RecipeRepositoryTest {
     }
 
     @Test
+    fun `bewerken vervangt inhoud en zoekindex, houdt tags, favoriet en bron`() = runTest {
+        val id = repo.save(kipKerrie)
+        repo.setFavorite(id, true)
+        now = 5_000L
+
+        val draft = repo.get(id)!!.toDraft()
+        assertEquals(kipKerrie.ingredients, draft.ingredients)
+        repo.update(
+            id,
+            draft.copy(
+                title = "Kip kerrie van mama",
+                mainIngredient = MainIngredient.VIS,
+                ingredients = listOf("300 gr kipdijfilet", "kokosmelk"),
+                steps = listOf(ParsedStep("Alles in de pan.")),
+            ),
+        )
+
+        val d = repo.get(id)!!
+        assertEquals("Kip kerrie van mama", d.recipe.title)
+        assertEquals(MainIngredient.VIS, d.recipe.mainIngredient)
+        assertEquals(listOf("300 gr kipdijfilet", "kokosmelk"), d.ingredients.map { it.raw })
+        assertEquals(listOf("Alles in de pan."), d.steps.map { it.text })
+        assertEquals(5_000L, d.recipe.updatedAt)
+        assertEquals(1_000L, d.recipe.createdAt)
+        assertTrue(d.recipe.favorite)
+        assertEquals(kipKerrie.sourceUrl, d.recipe.sourceUrl)
+        assertEquals(listOf("Crème fraîche", "Kip"), d.tags)
+
+        assertEquals("nieuw ingrediënt vindbaar", listOf(id), repo.search("kokosmelk").map { it.id })
+        assertTrue("oud ingrediënt niet meer", repo.search("rijst").isEmpty())
+        assertEquals("tags blijven vindbaar", listOf(id), repo.search("creme").map { it.id })
+        assertEquals("één rij in de zoekindex", 1, repo.search("mama").size)
+    }
+
+    @Test
     fun `favoriet zetten werkt updatedAt bij, bibliotheek nieuwste eerst`() = runTest {
         val a = repo.save(kipKerrie)
         now = 1_500L

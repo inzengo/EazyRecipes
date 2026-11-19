@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -68,7 +69,8 @@ class RecipeViewModel(
 
     init { reload() }
 
-    private fun reload() = viewModelScope.launch {
+    /** Ook na terugkomen van "Bewerken". */
+    fun reload() = viewModelScope.launch {
         _state.value = repository.get(id)?.let { DetailState.Found(it) } ?: DetailState.Gone
     }
 
@@ -90,10 +92,12 @@ class RecipeViewModel(
 }
 
 @Composable
-fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit) {
+fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
+    // Terug van het bewerkscherm: opnieuw laden (dit scherm verlaat de compositie zolang je bewerkt).
+    LaunchedEffect(Unit) { vm.reload() }
     when (val s = state) {
-        is DetailState.Found -> Detail(s.details, vm, onBack)
+        is DetailState.Found -> Detail(s.details, vm, onBack, onEdit)
         DetailState.Gone -> Column(Modifier.fillMaxSize().background(Eazy.Grey).statusBarsPadding().padding(16.dp)) {
             RoundButton(R.drawable.ic_back, "Terug", onBack, background = Eazy.Paper)
             Text("Dit recept bestaat niet meer.", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 24.dp))
@@ -105,7 +109,7 @@ fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit) {
 private val PHOTO_HEIGHT = 320.dp
 
 @Composable
-private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit) {
+private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit) {
     val r = d.recipe
     val ctx = r.mainIngredient.context
     val context = LocalContext.current
@@ -123,6 +127,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit) {
                 ) {
                     RoundButton(R.drawable.ic_back, "Terug", onBack)
                     Box(Modifier.weight(1f))
+                    RoundButton(R.drawable.ph_pencil, "Bewerken", onEdit)
                     RoundButton(
                         R.drawable.ph_heart, if (r.favorite) "Uit favorieten" else "Favoriet", vm::toggleFavorite,
                         background = if (r.favorite) Eazy.Brand else Eazy.Paper.copy(alpha = 0.9f),

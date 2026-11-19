@@ -22,6 +22,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import nl.eazyrecipes.ui.detail.RecipeScreen
 import nl.eazyrecipes.ui.detail.RecipeViewModel
+import nl.eazyrecipes.ui.editor.EditRecipeScreen
+import nl.eazyrecipes.ui.editor.EditRecipeViewModel
 import nl.eazyrecipes.ui.importflow.ImportScreen
 import nl.eazyrecipes.ui.importflow.ImportViewModel
 import nl.eazyrecipes.ui.library.LibraryScreen
@@ -81,7 +83,15 @@ class MainActivity : ComponentActivity() {
                     ) { entry ->
                         val id = entry.arguments?.getString("id").orEmpty()
                         val vm = viewModel { RecipeViewModel(id, c.repository, c.images) }
-                        RecipeScreen(vm, onBack = { nav.popBackStack() })
+                        RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) })
+                    }
+                    composable(
+                        Routes.EDIT,
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { entry ->
+                        val id = entry.arguments?.getString("id").orEmpty()
+                        val vm = viewModel { EditRecipeViewModel(id, c.repository) }
+                        EditRecipeScreen(vm, onDone = { nav.popBackStack() })
                     }
                 }
             }
@@ -98,8 +108,10 @@ private object Routes {
     const val LIBRARY = "library"
     const val IMPORT = "import?url={url}"
     const val RECIPE = "recipe/{id}"
+    const val EDIT = "recipe/{id}/edit"
     fun import(url: String) = "import?url=${Uri.encode(url)}"
     fun recipe(id: String) = "recipe/$id"
+    fun edit(id: String) = "recipe/$id/edit"
 }
 
 private val urlRegex = Regex("""https?://\S+""")

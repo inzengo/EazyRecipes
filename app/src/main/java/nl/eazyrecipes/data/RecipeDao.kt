@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -35,6 +36,18 @@ interface RecipeDao {
 
     @Query("DELETE FROM recipe_fts WHERE recipeId = :recipeId")
     suspend fun deleteFts(recipeId: String)
+
+    @Update
+    suspend fun updateRecipe(recipe: RecipeEntity)
+
+    @Query("DELETE FROM ingredient WHERE recipeId = :recipeId")
+    suspend fun deleteIngredients(recipeId: String)
+
+    @Query("DELETE FROM step WHERE recipeId = :recipeId")
+    suspend fun deleteSteps(recipeId: String)
+
+    @Query("SELECT * FROM recipe WHERE id = :id")
+    suspend fun recipe(id: String): RecipeEntity?
 
     @Query("UPDATE recipe SET favorite = :favorite, updatedAt = :now WHERE id = :id")
     suspend fun setFavorite(id: String, favorite: Boolean, now: Long)

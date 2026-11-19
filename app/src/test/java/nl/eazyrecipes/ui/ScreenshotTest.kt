@@ -34,6 +34,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowLooper
 import java.io.File
 import java.io.IOException
 
@@ -72,11 +73,23 @@ class ScreenshotTest {
 
     @After fun tearDown() = db.close()
 
+    /**
+     * Room levert resultaten af via de main-looper van Robolectric; die draait niet vanzelf door.
+     * Daarom pompen we hem zelf tot [done], in echte tijd.
+     */
+    private fun pumpUntil(what: String, done: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 30_000
+        while (!done()) {
+            check(System.currentTimeMillis() < deadline) { "$what niet klaar binnen 30 s" }
+            ShadowLooper.idleMainLooper()
+            Thread.sleep(5)
+        }
+    }
+
     /** @param ready wacht hierop ná setContent (pas dan draait de main-looper van Robolectric door). */
     private fun shot(name: String, ready: () -> Boolean = { true }, state: () -> Any? = { null }, content: @Composable () -> Unit) {
         compose.setContent { EazyTheme(content) }
-        // Ruime limiet: de eerste test in een run warmt de Robolectric-sandbox op (~20 s).
-        runCatching { compose.waitUntil(60_000, ready) }.onFailure { throw AssertionError("$name niet klaar: ${state()}", it) }
+        runCatching { compose.waitUntil(30_000, ready) }.onFailure { throw AssertionError("$name niet klaar: ${state()}", it) }
         compose.waitForIdle()
         // Zelf tekenen: captureToImage() wacht onder Robolectric eindeloos op een hertekening.
         val view = compose.activity.window.decorView
@@ -118,17 +131,20 @@ class ScreenshotTest {
 
     @Test fun import_failed() {
         val vm = importVm(FetchResult.HttpError(404))
+        pumpUntil("fout") { vm.state.value is ImportUiState.Failed }
         shot("04-import-failed", { vm.state.value is ImportUiState.Failed }) { ImportScreen(url, vm, {}, {}, {}) }
     }
 
     @Test fun import_preview() {
         val vm = importVm(FetchResult.Page(html, url))
+        pumpUntil("voorbeeld") { vm.state.value is ImportUiState.Editing }
         shot("05-import-preview", { vm.state.value is ImportUiState.Editing }) { ImportScreen(url, vm, {}, {}, {}) }
     }
 
     @Config(qualifiers = "w393dp-h2600dp-xxhdpi")
     @Test fun import_preview_full() {
         val vm = importVm(FetchResult.Page(html, url))
+        pumpUntil("voorbeeld") { vm.state.value is ImportUiState.Editing }
         shot("06-import-preview-full", { vm.state.value is ImportUiState.Editing }, { vm.state.value }) { ImportScreen(url, vm, {}, {}, {}) }
     }
 
@@ -136,6 +152,7 @@ class ScreenshotTest {
     @Test fun detail_full() {
         val id = runBlocking { repo.save(checkNotNull(JsonLdRecipeParser.parse(html, url))) }
         val vm = RecipeViewModel(id, repo, ImageStore(tmp.newFolder(), noNetwork))
-        shot("07-detail-full", { vm.state.value is DetailState.Found }) { RecipeScreen(vm, {}) }
+        pumpUntil("detail") { vm.state.value is DetailState.Found }
+        shot("07-detail-full", { vm.state.value is DetailState.Found }) { RecipeScreen(vm, {}, {}) }
     }
 }
