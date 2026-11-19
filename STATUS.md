@@ -1,6 +1,6 @@
 # Status — EazyRecipes
 
-_Laatst bijgewerkt: 2026-11-17_
+_Laatst bijgewerkt: 2026-11-19_
 
 ## Waar staan we
 
@@ -8,7 +8,7 @@ _Laatst bijgewerkt: 2026-11-17_
 |---|---|
 | 0 — Fundament (repo, skelet, toolchain, eerste APK) | ✅ klaar |
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
-| 2 — Data + import | ⏭️ **volgende** |
+| 2 — Data + import | 🚧 **bezig**: datamodel + parser klaar, nu importflow |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -16,6 +16,10 @@ _Laatst bijgewerkt: 2026-11-17_
 - **Repo:** Kotlin + Jetpack Compose-skelet (`app/`). Het delen-menu ("Delen → EazyRecipes") vangt al een link op en toont die.
 - **APK:** `assembleDebug` werkt. Output: `E:\DevTools\builds\EazyRecipes\app\outputs\apk\debug\app-debug.apk`.
   Nog **niet** op een telefoon getest.
+- **Datamodel (Room 2.7, KSP2):** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, plus de FTS4-index `recipe_fts`. Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
+  Zoeken: elk woord als prefix ("kipf" vindt "kipfilet"), zonder accenten ("creme" vindt "crème"). Schema-export staat in `app/schemas/`.
+- **Importer:** `app/src/main/java/nl/eazyrecipes/importer/`. `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
+- **Tests:** `./gradlew testDebugUnitTest`, 23 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Toolchain:** JDK 17, Android SDK, Gradle-cache en build-output staan allemaal op `E:\DevTools`. Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md).
 - **Design-mockups:** klikbaar canvas → https://claude.ai/artifact/6UDLioCa2cawBMaDYd1Wjm
   (privé). De broncode staat in `docs/design/mockups/` (`Main.dc.html` = prototype v0.2, `Versie1.dc.html` = eerste versie ter vergelijking).
@@ -59,15 +63,18 @@ _Laatst bijgewerkt: 2026-11-17_
 
 ## Volgende stap: fase 2 (data + import)
 
-1. Datamodel in Room: UUID's, `updatedAt`, `deletedAt`, en FTS voor zoeken (zie PLAN.md).
-2. JSON-LD-parser met unit tests op opgeslagen echte pagina's (leukerecepten.nl werkt; eefkooktzo.nl geeft 403 → WebView-fallback).
-3. Delen-menu en link plakken → voorbeeldscherm → opslaan.
-4. Het design-systeem in Compose zetten: thema, fonts, kleuren, Phosphor-iconen.
-5. **Eerste test op de telefoon.**
+1. ✅ Datamodel in Room: UUID's, `updatedAt`, `deletedAt`, en FTS voor zoeken.
+2. ✅ JSON-LD-parser met unit tests op opgeslagen echte pagina's.
+3. Ophalen: HTTP-fetch, met een WebView-fallback bij 403 (eefkooktzo.nl). Foto lokaal opslaan.
+4. Delen-menu en link plakken → voorbeeldscherm → opslaan.
+5. Het design-systeem in Compose zetten: thema, fonts, kleuren, Phosphor-iconen.
+6. **Eerste test op de telefoon.**
 
 ## Open punten
 
-- Na de vrijgemaakte ruimte op C: kunnen de zuinige Gradle-instellingen (`-Xmx1g`, 2 workers) misschien weer ruimer. Eerst testen.
+- Gradle-geheugen is verhoogd naar `-Xmx2g` / 1 GB metaspace. Dat is getest met een `clean` + build + tests.
+- `build`-mappen zijn nu junctions naar E: (nodig voor KSP). Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md#5-gradle-build-output-en-temp-naar-e).
+- De hoofdingrediënt-gok (`MainIngredientGuesser`) is een heuristiek. In het voorbeeldscherm moet de gebruiker hem kunnen aanpassen.
 - Welke sites komen er naast leukerecepten.nl en eefkooktzo.nl bij Ontdekken (latere fase)?
 - Foto's in de mockup komen van Unsplash. In de app gebruiken we de foto van de bron, die lokaal wordt opgeslagen.
 

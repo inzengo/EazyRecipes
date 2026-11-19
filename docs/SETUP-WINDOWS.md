@@ -56,28 +56,62 @@ Open daarna een nieuwe terminal, zodat de variabelen actief worden.
 
 ## 5. Gradle: build-output en temp naar E:
 
-`E:\DevTools\gradle-home\init.d\build-dir-on-e.init.gradle.kts`:
+`E:\DevTools\gradle-home\init.d\build-dir-on-e.init.gradle.kts` maakt van `<project>\build` een
+**directory junction** naar `E:\DevTools\builds\<project>\<module>` (bijvoorbeeld `app\build` → `E:\DevTools\builds\EazyRecipes\app`).
+Gradle ziet dus een pad op C:, maar de bestanden staan fysiek op E:. Een junction maken kan zonder adminrechten.
+
+**Waarom geen `buildDirectory` direct op E:?** Dat werkte tot Room erbij kwam. KSP (de code-generator van Room) en
+AGP's `isIncludeAndroidResources` rekenen paden relatief aan de projectmap uit. Bij twee schijven crashen ze met
+`this and base files have different roots`.
 
 ```kotlin
+import java.nio.file.Files
+
 gradle.beforeProject {
     val rel = if (path == ":") "_root" else path.removePrefix(":").replace(':', '/')
-    layout.buildDirectory.set(File("E:/DevTools/builds/${rootProject.name}/$rel"))
+    val target = File("E:/DevTools/builds/${rootProject.name}/$rel")
+    if (projectDir.absolutePath.uppercase().startsWith("E:")) {   // project staat al op E:
+        layout.buildDirectory.set(target)
+        return@beforeProject
+    }
+    val link = File(projectDir, "build")
+    // `clean` zou de junction zelf weggooien → alleen de inhoud op E: wissen.
+    // afterEvaluate, zodat dit ná de base-plugin komt (die voegt `build` anders opnieuw toe).
+    afterEvaluate {
+        tasks.withType(Delete::class.java).matching { it.name == "clean" }.configureEach {
+            setDelete(provider { target.listFiles()?.toList().orEmpty() })
+        }
+    }
+    if (Files.exists(link.toPath())) {
+        val real = link.toPath().toRealPath().toFile()
+        if (real.canonicalPath.equals(target.canonicalPath, ignoreCase = true)) return@beforeProject
+        throw GradleException("$link bestaat al en wijst niet naar $target (maar naar $real).")
+    }
+    target.mkdirs()
+    val p = ProcessBuilder("cmd", "/c", "mklink", "/J", link.absolutePath, target.absolutePath)
+        .redirectErrorStream(true).start()
+    val out = p.inputStream.bufferedReader().readText()
+    if (p.waitFor() != 0) throw GradleException("Junction maken mislukt: $out")
 }
 ```
+
+Staat er nog een echte `build`-map (geen junction), dan stopt het script met een melding. Verwijder die map dan; het is alleen build-output.
 
 `E:\DevTools\gradle-home\gradle.properties`:
 
 ```properties
-org.gradle.jvmargs=-Xmx1g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8 -Djava.io.tmpdir=E:/DevTools/tmp
+org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8 -Djava.io.tmpdir=E:/DevTools/tmp
 org.gradle.workers.max=2
 kotlin.compiler.execution.strategy=in-process
 ```
 
-**Waarom zo zuinig?** Met `-Xmx2048m` crashte de Gradle-daemon met
-`Failed to commit metaspace` (hs_err-log). Het systeem heeft 16 GB RAM, maar het wisselbestand
-staat op C: en kan niet groeien omdat C: vol is. Daardoor was maar ~2,4 GB virtueel geheugen beschikbaar.
-Deze instellingen draaien één JVM met een kleine heap. Een volledige build duurt zo ~2,5 minuut.
-Als C: weer ruimte heeft, of het wisselbestand naar E: verhuist, kunnen deze limieten weer omhoog.
+**Geschiedenis:** eerst stond hier `-Xmx1g -XX:MaxMetaspaceSize=512m`. Met `-Xmx2048m` crashte de daemon toen met
+`Failed to commit metaspace`. Het wisselbestand staat op C: en C: was vol, waardoor er maar ~2,4 GB virtueel geheugen was.
+Na het opruimen van C: (26 GB vrij, 2026-11-19) kon het weer naar 2 GB. Met Room/KSP erbij liep 512 MB metaspace vol.
+Raakt C: weer vol, ga dan terug naar de zuinige waarden.
+
+**Robolectric** (database-tests) downloadt een Android-jar naar `~/.m2`. `app/build.gradle.kts` zet `user.home` voor
+de test-JVM op `E:\DevTools\robolectric-home`, zodat dat niet op C: belandt.
 
 `local.properties` in de projectmap (staat in `.gitignore`):
 
