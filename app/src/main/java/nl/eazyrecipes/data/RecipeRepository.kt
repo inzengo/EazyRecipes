@@ -18,6 +18,13 @@ class RecipeRepository(
 
     fun observeLibrary(): Flow<List<RecipeEntity>> = dao.observeLibrary()
 
+    /** Elk niet-verwijderd recept met zijn ingrediëntregels in volgorde, nieuwste recept eerst. */
+    fun observeRecipesWithIngredients(): Flow<List<Pair<RecipeEntity, List<String>>>> =
+        combine(dao.observeLibrary(), dao.observeIngredients()) { recipes, ingredients ->
+            val linesOf = ingredients.groupBy({ it.recipeId }, { it.raw })
+            recipes.map { it to linesOf[it.id].orEmpty() }
+        }
+
     suspend fun findBySourceUrl(url: String): RecipeEntity? = dao.bySourceUrl(url)
 
     /** Slaat een geïmporteerd (en evt. in het voorbeeldscherm bewerkt) recept op. @return het nieuwe id. */

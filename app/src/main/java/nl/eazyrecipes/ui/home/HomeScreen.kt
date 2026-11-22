@@ -241,16 +241,3 @@ private fun MoreRow(@DrawableRes icon: Int, color: Color, label: String, note: S
         }
     }
 }
-
-/** Tijdelijke inhoud voor een onderdeel dat in een volgende stap komt. */
-@Composable
-fun ComingSoon(title: String, text: String) {
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Eazy.Paper).padding(horizontal = 20.dp, vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = Eazy.Muted)
-    }
-}

@@ -177,6 +177,30 @@ class ScreenshotTest {
         }
     }
 
+    private val pantryActions = nl.eazyrecipes.ui.pantry.PantryActions({}, {}, {}, {}, {})
+
+    private val pantryRecipes by lazy {
+        nl.eazyrecipes.ui.pantry.PantryMatcher.index(
+            listOf(
+                recipe("Shakshuka met feta", MainIngredient.VEGA, 25) to listOf("4 eieren", "1 blik tomatenblokjes", "1 ui", "1 rode paprika", "2 tenen knoflook", "75 g feta", "zout en peper"),
+                recipe("Kip kerrie: romig en vers gemaakt", MainIngredient.VLEES, 30) to listOf("150 gr rijst", "200 gr kipfilet", "1 ui", "2 tl kerriepoeder", "125 ml crème fraîche", "1 rode paprika"),
+                recipe("Zalm uit de oven met citroen", MainIngredient.VIS, 25) to listOf("2 zalmfilets", "1 citroen", "300 g krieltjes", "2 el olijfolie"),
+                recipe("Linzensoep", MainIngredient.VEGAN, 45) to listOf("200 g rode linzen", "1 ui", "2 wortels", "1 blik tomatenblokjes", "1 l groentebouillon", "1 tl komijn"),
+                recipe("Appelkruimeltaart", MainIngredient.ZOET, 100) to listOf("4 appels", "200 g bloem", "150 g boter", "100 g suiker", "1 ei"),
+            )
+        )
+    }
+
+    @Config(qualifiers = "w393dp-h1400dp-xxhdpi")
+    @Test fun pantry_with_matches() = shot("08-pantry") {
+        val sel = nl.eazyrecipes.ui.pantry.PantrySelection(setOf("ui", "knoflook", "eieren", "tomaat", "paprika"), listOf("halloumi"))
+        nl.eazyrecipes.ui.pantry.PantryScreen(nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, sel), pantryActions)
+    }
+
+    @Test fun pantry_nothing_chosen() = shot("08b-pantry-empty") {
+        nl.eazyrecipes.ui.pantry.PantryScreen(nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, nl.eazyrecipes.ui.pantry.PantrySelection()), pantryActions)
+    }
+
     @Test fun import_loading() = shot("03-import-loading") {
         // Nooit klaar, zodat de laad-toestand blijft staan.
         val vm = ImportViewModel(url, RecipeImporter({ kotlinx.coroutines.awaitCancellation() }, null), repo, ImageStore(tmp.newFolder(), noNetwork))

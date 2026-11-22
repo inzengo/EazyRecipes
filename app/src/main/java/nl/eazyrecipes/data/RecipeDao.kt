@@ -90,6 +90,16 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe WHERE deletedAt IS NULL ORDER BY createdAt DESC")
     fun observeLibrary(): Flow<List<RecipeEntity>>
 
+    /** Alle ingrediëntregels van niet-verwijderde recepten (voor "In huis"). */
+    @Query(
+        """
+        SELECT i.* FROM ingredient i JOIN recipe r ON r.id = i.recipeId
+        WHERE r.deletedAt IS NULL AND i.deletedAt IS NULL
+        ORDER BY i.recipeId, i.position
+        """
+    )
+    fun observeIngredients(): Flow<List<IngredientEntity>>
+
     @Transaction
     @Query("SELECT * FROM recipe WHERE id = :id AND deletedAt IS NULL")
     suspend fun details(id: String): RecipeWithDetails?

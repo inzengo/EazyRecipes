@@ -24,9 +24,10 @@ import nl.eazyrecipes.ui.editor.EditRecipeScreen
 import nl.eazyrecipes.ui.editor.EditRecipeViewModel
 import nl.eazyrecipes.ui.importflow.ImportScreen
 import nl.eazyrecipes.ui.importflow.ImportViewModel
-import nl.eazyrecipes.ui.home.ComingSoon
 import nl.eazyrecipes.ui.home.HomeScreen
 import nl.eazyrecipes.ui.library.LibraryViewModel
+import nl.eazyrecipes.ui.pantry.PantryScreen
+import nl.eazyrecipes.ui.pantry.PantryViewModel
 import nl.eazyrecipes.ui.theme.EazyTheme
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +62,10 @@ class MainActivity : ComponentActivity() {
                             library = library,
                             onOpen = { nav.navigate(Routes.recipe(it)) },
                             onImport = { nav.navigate(Routes.import(it)) },
-                            pantry = { ComingSoon("In huis", "Komt in het volgende deel van fase 3.") },
+                            pantry = {
+                                val vm = viewModel { PantryViewModel(c.repository, getSharedPreferences("pantry", MODE_PRIVATE)) }
+                                PantryScreen(vm, onOpen = { nav.navigate(Routes.recipe(it)) })
+                            },
                         )
                     }
                     composable(

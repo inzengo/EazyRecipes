@@ -1,6 +1,6 @@
 # Status — EazyRecipes
 
-_Laatst bijgewerkt: 2026-11-19 (avond)_
+_Laatst bijgewerkt: 2026-11-22_
 
 ## Waar staan we
 
@@ -9,7 +9,7 @@ _Laatst bijgewerkt: 2026-11-19 (avond)_
 | 0 — Fundament (repo, skelet, toolchain, eerste APK) | ✅ klaar |
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
 | 2 — Data + import | ✅ klaar |
-| 3 — Bibliotheek & vinden | 🚧 3a + 3b klaar, **3c (In huis) volgende** |
+| 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -23,7 +23,7 @@ _Laatst bijgewerkt: 2026-11-19 (avond)_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 61 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 88 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -76,32 +76,23 @@ _Laatst bijgewerkt: 2026-11-19 (avond)_
 
 Remote `origin` = https://github.com/inzengo/EazyRecipes (privé). `main` volgt `origin/main`; push na elke afgeronde stap.
 
-## Volgende stap: fase 3c — "In huis"
+## Fase 3 — wat er gedaan is
 
-Gedaan in fase 3:
 - **3a** (`881b71a`): bibliotheek volgens de mockup (zoeken, categorie-tegels, tabs, filter-sheet, uitgelicht recept, navigatiebalk). Ontdek en Meer zijn tussenpagina's.
 - **3b** (`9e192e8`): collecties (tab, openen = gefilterde bibliotheek, hernoemen en verwijderen, mapje op het detailscherm).
+- **3c** "In huis" (`ui/pantry/`):
+  - `PantryCatalog`: ~65 veelvoorkomende ingrediënten met varianten (kip = kip, kipfilet, kippendijen, …) en uitzonderingen (lente-ui ≠ ui, zoete aardappel ≠ aardappel, zure room ≠ room).
+  - `PantryMatcher`: matcht op hele woorden zonder hoofdletters/accenten ("kippenbouillon" = bouillon, niet kip). Zout, peper, olie, water, "naar smaak", optioneel en kopjes tellen niet mee. Eigen woorden matchen op het begin van een woord; typ je een woord dat in de lijst staat, dan wordt die chip gekozen. Score = aandeel regels dat je hebt; ≥ 1 treffer, hoogste eerst, max. 12. "Nog nodig" toont de naam zonder hoeveelheid.
+  - `PantryViewModel`: keuze en eigen woorden in SharedPreferences (`pantry`). Analyse van de regels alleen opnieuw als de bibliotheek verandert.
+  - `PantryScreen`: lavendel kop, chips (meest gebruikt eerst, na 18 "+ N meer"), veld "iets anders", "Wissen", lijst met foto, streepjes, "Nog nodig" en score-rondje in de receptkleur. Tik opent het recept.
+  - Data: `RecipeDao.observeIngredients()` + `RecipeRepository.observeRecipesWithIngredients()`.
+  - Screenshots: `08-pantry.png`, `08b-pantry-empty.png`.
 - Eerder: recepten bewerken en een robuuster klembord (`ebf161b`). Nog niet op de telefoon getest (afgesproken).
 
-**Plan voor 3c.** Het tabblad "In huis" toont nu `ComingSoon(...)`, via de `pantry`-parameter van `HomeScreen` in `MainActivity`.
-1. `ui/pantry/PantryMatcher.kt` (pure Kotlin + unit tests):
-   - **Lijst ingrediënten:** een vaste lijst van ~50 veelvoorkomende ingrediënten met varianten, bijvoorbeeld kip = kip, kipfilet, kippendij, …
-   - **Matchen:** op hele woorden of woordgroepen, zonder hoofdletters en accenten. Zo telt "kippenbouillon" als bouillon, niet als kip.
-   - **Wat niet meetelt:** zout, peper, olie, water, "optioneel:"- en "naar smaak"-regels tellen niet mee als "nog nodig".
-   - **Eigen woorden:** matchen op het begin van een woord.
-   - **Score:** het aandeel regels dat je hebt. Alleen recepten met ten minste één treffer, de hoogste score eerst, maximaal 12.
-   - **"Nog nodig":** de naam zonder hoeveelheid ("200 gr kipfilet" → "kipfilet").
-   - **Chips:** alleen lijst-items die in je eigen recepten voorkomen, de meest gebruikte eerst.
-2. **Data:** een DAO-query met alle ingrediëntregels van niet-verwijderde recepten (Flow) en een repository-methode die per recept de regels geeft.
-3. **`PantryViewModel`:** onthoudt je keuze en eigen woorden in SharedPreferences, zodat ze na het afsluiten blijven staan.
-4. **`PantryScreen` volgens de mockup:**
-   - lavendel kop "Wat heb je in huis?";
-   - chips: zwart met ✓ = gekozen, wit met + = niet gekozen;
-   - een veld "iets anders";
-   - een lijst "Hiermee kun je aan de slag": foto, titel, streepjes per ingrediënt, "Nog nodig: …" en een score-rondje ("4/6") in de receptkleur. Tik opent het recept.
-5. **Tests:** screenshot-test, STATUS bijwerken, commit.
+## Volgende stap
 
-Daarna: **fase 4** (kookmodus, porties omrekenen, notities, delen als tekst of `.eazy`, back-up). Zie PLAN.md.
+1. **Op de telefoon testen** (fase 3 is compleet): APK installeren, eigen recepten importeren, In huis uitproberen. Vooral letten op ingrediënten die niet of verkeerd herkend worden; die komen in `PantryCatalog`.
+2. Daarna **fase 4**: kookmodus, porties omrekenen, notities, delen als tekst of `.eazy`, back-up. Zie PLAN.md.
 
 ## Open punten
 
@@ -119,4 +110,4 @@ git log --oneline          # wat er gebeurd is
 ./gradlew assembleDebug    # controleer dat de build nog werkt
 ```
 
-Lees daarna deze STATUS.md en PLAN.md. Zeg tegen Claude: "we gaan verder met fase 2".
+Lees daarna deze STATUS.md en PLAN.md. Zeg tegen Claude: "we gaan verder", Claude leest dan STATUS.md.

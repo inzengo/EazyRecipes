@@ -92,6 +92,19 @@ class RecipeRepositoryTest {
     }
 
     @Test
+    fun `recepten met ingredientregels in volgorde, zonder verwijderde`() = runTest {
+        val kip = repo.save(kipKerrie)
+        now = 2_000L
+        val taart = repo.save(appeltaart)
+        assertEquals(
+            listOf(taart to appeltaart.ingredients, kip to kipKerrie.ingredients),
+            repo.observeRecipesWithIngredients().first().map { (r, lines) -> r.id to lines },
+        )
+        repo.delete(taart)
+        assertEquals(listOf(kip), repo.observeRecipesWithIngredients().first().map { it.first.id })
+    }
+
+    @Test
     fun `verwijderen is soft-delete en haalt het recept uit bibliotheek en zoeken`() = runTest {
         val id = repo.save(kipKerrie)
         now = 2_000L
