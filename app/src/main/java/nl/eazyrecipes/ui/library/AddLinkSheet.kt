@@ -2,7 +2,16 @@ package nl.eazyrecipes.ui.library
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -70,6 +79,8 @@ fun AddLinkSheet(
     onSubmit: (String) -> Unit,
     onSubmitMany: (List<String>) -> Unit = {},
     onManual: () -> Unit = {},
+    onBookmarks: () -> Unit = {},
+    onEazyFile: () -> Unit = {},
 ) {
     val context = LocalContext.current
     // Wat we automatisch invulden; dat bewaren we niet als "jouw tekst" bij per ongeluk sluiten.
@@ -120,10 +131,32 @@ fun AddLinkSheet(
                 onClick = { if (links.size > 1) onSubmitMany(links) else onSubmit(links.single()) },
                 enabled = valid,
             )
-            TextButton(onClick = onManual, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("Geen link? Voer een recept zelf in", style = MaterialTheme.typography.labelLarge, color = Eazy.Ink)
+            Text("Of op een andere manier", style = MaterialTheme.typography.labelLarge, color = Eazy.Muted, modifier = Modifier.padding(top = 6.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AddOption(R.drawable.ph_pencil, Eazy.Brand, "Zelf invoeren", "Typ een recept over, zonder link", onManual)
+                AddOption(R.drawable.ph_bookmark, Color(0xFF4D9DFF), "Bladwijzers", "Receptlinks uit Chrome, Firefox of Safari", onBookmarks)
+                AddOption(R.drawable.ph_share, Color(0xFF47E3BC), ".eazy-bestand", "Een recept of collectie die iemand met je deelde", onEazyFile)
             }
         }
+    }
+}
+
+/** Eén regel in "Of op een andere manier": gekleurd icoon, naam en uitleg. */
+@Composable
+private fun AddOption(@DrawableRes icon: Int, color: Color, label: String, note: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Eazy.Grey).clickable(onClick = onClick).padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(color), contentAlignment = Alignment.Center) {
+            Ico(icon, 20.dp, tint = Eazy.Ink)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleSmall)
+            Text(note, style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
+        }
+        Ico(R.drawable.ic_chevron_right, 18.dp, tint = Eazy.Muted)
     }
 }
 

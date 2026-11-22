@@ -85,6 +85,9 @@ fun HomeScreen(
     // Wat er in "link plakken" stond toen het venster (per ongeluk) dicht ging; leeg na een import.
     var draft by rememberSaveable { mutableStateOf("") }
     val state by library.state.collectAsStateWithLifecycle()
+    // Hier en niet in het venster: dat is al dicht als de bestandskiezer terugkomt.
+    val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenFile) }
+    val openBookmarks = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenBookmarks) }
 
     BackHandler(enabled = tab != HomeTab.LIBRARY) { tab = HomeTab.LIBRARY }
 
@@ -108,7 +111,7 @@ fun HomeScreen(
             )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
-            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels, onOpenFile, onOpenBookmarks)
+            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels, onOpenFile)
         }
         BottomNav(tab, accent, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -121,6 +124,8 @@ fun HomeScreen(
             onSubmit = { url -> draft = ""; addOpen = false; onImport(url) },
             onSubmitMany = { urls -> draft = ""; addOpen = false; onImportMany(urls) },
             onManual = { draft = ""; addOpen = false; onImport("") },
+            onBookmarks = { addOpen = false; openBookmarks.launch(arrayOf("text/html", "*/*")) },
+            onEazyFile = { addOpen = false; openFile.launch(arrayOf("*/*")) },
         )
     }
 }
@@ -236,7 +241,7 @@ private fun SiteRow(letter: String, color: Color, name: String, note: String) {
 }
 
 @Composable
-private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, onOpenFile: (android.net.Uri) -> Unit, onOpenBookmarks: (android.net.Uri) -> Unit) {
+private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, onOpenFile: (android.net.Uri) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
@@ -266,7 +271,6 @@ private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, o
         }
     }
     val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenFile) }
-    val openBookmarks = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenBookmarks) }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 120.dp),
@@ -275,13 +279,10 @@ private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, o
             Text("Meer", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(bottom = 12.dp))
             MoreRow(R.drawable.ph_bowl_food, Color(0xFFFF8A3D), "Categorieën", "Namen, kleuren en iconen", onOpenCategories)
             MoreRow(R.drawable.ph_tag, Color(0xFF3FD0F0), "Labels", "Kleuren, samenvoegen, verbergen", onOpenLabels)
-            MoreRow(R.drawable.ph_bookmark, Color(0xFF4D9DFF), "Bladwijzers importeren", "Receptlinks uit Chrome, Firefox of Safari") {
-                openBookmarks.launch(arrayOf("text/html", "*/*"))
-            }
             MoreRow(R.drawable.ph_folder, Eazy.Snel.vivid, "Back-up maken", if (busy) "Bezig…" else "Alle recepten, foto's, categorieën en labels in één bestand") {
                 if (!busy) createBackup.launch(Sharing.backupName())
             }
-            MoreRow(R.drawable.ph_share, Color(0xFF47E3BC), "Bestand openen", "Een back-up terugzetten of een gedeeld .eazy-bestand") {
+            MoreRow(R.drawable.ph_share, Color(0xFF47E3BC), "Back-up terugzetten", "Of een gedeeld .eazy-bestand openen") {
                 openFile.launch(arrayOf("*/*"))
             }
             MoreRow(R.drawable.ph_chef_hat, Eazy.Brand, "Over EazyRecipes", "Versie ${BuildConfig.VERSION_NAME}")
