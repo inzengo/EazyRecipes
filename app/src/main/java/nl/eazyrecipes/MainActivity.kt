@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
                         arguments = listOf(navArgument("id") { type = NavType.StringType }),
                     ) { entry ->
                         val id = entry.arguments?.getString("id").orEmpty()
-                        val vm = viewModel { RecipeViewModel(id, c.repository, c.images) }
+                        val vm = viewModel { RecipeViewModel(id, c.repository, c.images, c.appScope) }
                         RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) })
                     }
                     composable(

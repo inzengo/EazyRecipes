@@ -127,6 +127,12 @@ class RecipeRepository(
 
     suspend fun setFavorite(id: String, favorite: Boolean) = dao.setFavorite(id, favorite, clock())
 
+    /** Eigen notitie; leeg = geen notitie. */
+    suspend fun setNotes(id: String, notes: String) = dao.setNotes(id, notes.trim().ifEmpty { null }, clock())
+
+    /** Nieuwe lokale omslagfoto. Het oude bestand opruimen is aan de aanroeper (ImageStore). */
+    suspend fun setImagePath(id: String, path: String?) = dao.setImagePath(id, path, clock())
+
     suspend fun delete(id: String) = db.withTransaction {
         dao.softDelete(id, clock())
         dao.deleteFts(id)

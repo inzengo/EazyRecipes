@@ -141,11 +141,12 @@ zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we h
   je dat ziet. Categorie en zoekwoord ontbreken als chips onder de tabs.
 - Tests: ViewModel-test voor snel typen, screenshot van de sheet.
 
-**4b — Detail: porties & notities**
+**4b — Detail: porties, notities & omslagfoto**
 - Hoeveelheden herkennen vooraan de ingrediëntregel (`200 gr`, `½`, `1-2`, `1,5`) en omrekenen met de porties-stepper
   ("2 ½ el" netjes afronden). Regels zonder hoeveelheid blijven zoals ze zijn.
 - Eigen notitie per recept (veld bestaat al: `RecipeEntity.notes`).
 - Ingrediënten afvinken (alleen voor deze kooksessie).
+- Omslagfoto wijzigen (wens 2026-11-22): kiezen uit de galerij (verkleind tot 1600 px), of de foto van de website terugzetten.
 
 **4c — Kookmodus**
 - Volledig scherm in de receptkleur, één stap tegelijk, groot stapnummer, swipen. Het scherm blijft aan.

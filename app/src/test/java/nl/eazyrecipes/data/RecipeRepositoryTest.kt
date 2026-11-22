@@ -92,6 +92,19 @@ class RecipeRepositoryTest {
     }
 
     @Test
+    fun `notitie en omslagfoto opslaan werkt updatedAt bij`() = runTest {
+        val id = repo.save(kipKerrie)
+        now = 2_000L
+        repo.setNotes(id, "  Minder kerrie  ")
+        assertEquals("Minder kerrie", repo.get(id)!!.recipe.notes)
+        repo.setNotes(id, "   ")
+        assertNull("leeg = geen notitie", repo.get(id)!!.recipe.notes)
+        now = 3_000L
+        repo.setImagePath(id, "/images/x.jpg")
+        with(repo.get(id)!!.recipe) { assertEquals("/images/x.jpg", imagePath); assertEquals(3_000L, updatedAt) }
+    }
+
+    @Test
     fun `recepten met ingredientregels in volgorde, zonder verwijderde`() = runTest {
         val kip = repo.save(kipKerrie)
         now = 2_000L

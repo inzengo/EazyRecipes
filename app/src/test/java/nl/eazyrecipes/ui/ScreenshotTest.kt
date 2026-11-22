@@ -229,7 +229,7 @@ class ScreenshotTest {
     @Config(qualifiers = "w393dp-h2200dp-xxhdpi")
     @Test fun detail_full() {
         val id = runBlocking { repo.save(checkNotNull(JsonLdRecipeParser.parse(html, url))) }
-        val vm = RecipeViewModel(id, repo, ImageStore(tmp.newFolder(), noNetwork))
+        val vm = RecipeViewModel(id, repo, ImageStore(tmp.newFolder(), noNetwork), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()))
         pumpUntil("detail") { vm.state.value is DetailState.Found }
         shot("07-detail-full", { vm.state.value is DetailState.Found }) { RecipeScreen(vm, {}, {}) }
     }

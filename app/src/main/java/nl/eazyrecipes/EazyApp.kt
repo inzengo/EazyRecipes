@@ -8,6 +8,9 @@ import nl.eazyrecipes.importer.HttpPageFetcher
 import nl.eazyrecipes.importer.ImageStore
 import nl.eazyrecipes.importer.RecipeImporter
 import nl.eazyrecipes.importer.WebViewPageFetcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 class EazyApp : Application() {
@@ -19,6 +22,8 @@ class AppContainer(context: Context) {
     val repository = RecipeRepository(EazyDatabase.get(context))
     val images = ImageStore(File(context.filesDir, "images"))
     val importer = RecipeImporter(http = HttpPageFetcher(), browser = WebViewPageFetcher(context))
+    /** Voor schrijfacties die niet mogen stoppen als een scherm (en zijn ViewModel) verdwijnt, zoals een notitie opslaan. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }
 
 val Context.container: AppContainer get() = (applicationContext as EazyApp).container

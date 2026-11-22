@@ -55,6 +55,12 @@ interface RecipeDao {
     @Query("UPDATE recipe SET deletedAt = :now, updatedAt = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
 
+    @Query("UPDATE recipe SET notes = :notes, updatedAt = :now WHERE id = :id")
+    suspend fun setNotes(id: String, notes: String?, now: Long)
+
+    @Query("UPDATE recipe SET imagePath = :imagePath, updatedAt = :now WHERE id = :id")
+    suspend fun setImagePath(id: String, imagePath: String?, now: Long)
+
     // --- collecties ---
 
     @Insert

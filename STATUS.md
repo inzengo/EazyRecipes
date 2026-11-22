@@ -10,7 +10,7 @@ _Laatst bijgewerkt: 2026-11-22_
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
 | 2 — Data + import | ✅ klaar |
 | 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
-| 4 — Koken, ordenen & delen | 🚧 4a klaar, **4b (porties & notities) volgende** — zie PLAN.md |
+| 4 — Koken, ordenen & delen | 🚧 4a + 4b klaar, **4c (kookmodus) volgende** — zie PLAN.md |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -24,7 +24,7 @@ _Laatst bijgewerkt: 2026-11-22_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 89 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 95 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -99,11 +99,16 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
   - Toetsenbord sluit bij de zoektoets, bij scrollen, bij het openen van een recept en bij de filterknop.
   - "Wis alles" in de sheet wist ook categorie en zoekwoord. Een tijdfilter meldt hoeveel recepten zonder tijd wegvallen. De gekozen categorie staat als chip onder de tabs.
   - Test: `LibraryViewModelTest`.
+- **4b** detailscherm:
+  - `recipe/Amounts.kt`: hoeveelheid + eenheid vooraan een regel herkennen ("200 gr", "1½ el", "2-3", "2 à 3", "1⁄2", "1.000 g") en omrekenen met nette keukengetallen (grammen op 5 vanaf 100, breuken onder de 10). Bij 1× wordt niets afgerond, alleen netjes geschreven.
+  - Porties-stepper in de receptkleur; hoeveelheden rekenen mee. Ingrediënten afvinken (per sessie, gereset als de ingrediënten veranderen).
+  - "Mijn notitie": opslaan na 600 ms stilte, en meteen bij terug/bewerken/afsluiten (via `AppContainer.appScope`, zodat het ook lukt als het scherm net verdwijnt).
+  - Omslagfoto: cameraknop op de foto → kies uit galerij (Photo Picker, geen toestemming nodig; verkleind tot 1600 px JPEG, EXIF-gedraaid) of foto van de website terugzetten. Oude foto wordt opgeruimd.
 
 ## Volgende stap
 
-1. **4b** — porties omrekenen, eigen notitie, ingrediënten afvinken.
-2. Nog steeds: alles op de telefoon testen (fase 3 + 4a).
+1. **4c** — kookmodus (stap voor stap, timers die doorlopen, scherm aan).
+2. Nog steeds: alles op de telefoon testen (fase 3 + 4a + 4b). Let bij 4b op: omrekenen bij je eigen recepten, foto kiezen uit de galerij.
 
 ## Open punten
 
