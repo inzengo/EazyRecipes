@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -151,7 +152,7 @@ fun LibraryScreen(
             }
             item(span = StaggeredGridItemSpan.FullLine, key = "tabs") { Tabs(f.tab) { t -> onFilter { it.copy(tab = t) } } }
             if (f.tab != LibraryTab.COLLECTIONS) {
-                item(span = StaggeredGridItemSpan.FullLine, key = "chips") { ActiveChips(f, state?.openCollection?.name, onFilter) }
+                item(span = StaggeredGridItemSpan.FullLine, key = "chips") { ActiveChips(f, state?.openCollection?.name, state?.labels.orEmpty().associate { it.id to it.name }, onFilter) }
             }
 
             when {
@@ -356,13 +357,14 @@ private fun Tabs(selected: LibraryTab, onPick: (LibraryTab) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ActiveChips(f: LibraryFilter, collectionName: String?, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit) {
+private fun ActiveChips(f: LibraryFilter, collectionName: String?, labelNames: Map<String, String>, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit) {
     val categoryLabel = tileContext(f.category).label
     val chips = buildList {
         collectionName?.let { add(it to { onFilter { f -> f.copy(collectionId = null) } }) }
         if (f.category != null) add(categoryLabel to { onFilter { it.copy(category = null) } })
         f.maxMinutes?.let { m -> add("≤ ${formatMinutes(m)}" to { onFilter { it.copy(maxMinutes = null) } }) }
         f.sources.forEach { s -> add(s to { onFilter { it.copy(sources = it.sources - s) } }) }
+        labelNames.filterKeys { it in f.labels }.forEach { (id, name) -> add("# $name" to { onFilter { it.copy(labels = it.labels - id) } }) }
         if (f.sort != SortOrder.RECENT) add(f.sort.label to { onFilter { it.copy(sort = SortOrder.RECENT) } })
     }
     if (chips.isEmpty()) return
@@ -487,9 +489,11 @@ private fun Empty(title: String, text: String) {
 private fun FilterSheet(state: LibraryUiState, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit, onDismiss: () -> Unit) {
     val f = state.filter
     val count = state.count
+    var allLabels by rememberSaveable { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
         Column(
-            Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
+            // Scrollen: met veel labels past de sheet niet meer op het scherm.
+            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -517,6 +521,14 @@ private fun FilterSheet(state: LibraryUiState, onFilter: ((LibraryFilter) -> Lib
                     val on = src in f.sources
                     Pill(src, on) { onFilter { it.copy(sources = if (on) it.sources - src else it.sources + src) } }
                 }
+            }
+            if (state.labels.isNotEmpty()) Group("Labels") {
+                val shown = if (allLabels) state.labels else state.labels.take(30).let { top -> top + state.labels.drop(30).filter { it.id in f.labels } }
+                shown.forEach { l ->
+                    val on = l.id in f.labels
+                    Pill("# ${l.name}", on) { onFilter { it.copy(labels = if (on) it.labels - l.id else it.labels + l.id) } }
+                }
+                if (shown.size < state.labels.size) Pill("+ ${state.labels.size - shown.size} meer", false) { allLabels = true }
             }
             Group("Sorteren") {
                 SortOrder.entries.forEach { s -> Pill(s.label, f.sort == s) { onFilter { it.copy(sort = s) } } }

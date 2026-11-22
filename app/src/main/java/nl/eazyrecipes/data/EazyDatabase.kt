@@ -19,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RecipeFtsEntity::class,
         CategoryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class EazyDatabase : RoomDatabase() {
@@ -30,7 +30,7 @@ abstract class EazyDatabase : RoomDatabase() {
 
         fun get(context: Context): EazyDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, EazyDatabase::class.java, "eazyrecipes.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(SeedCategories)
                 .build()
                 .also { instance = it }
@@ -58,5 +58,14 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_recipe_categoryId` ON `recipe` (`categoryId`)")
         DefaultCategories.insert(db, System.currentTimeMillis())
         db.execSQL("UPDATE `recipe` SET `categoryId` = LOWER(`mainIngredient`) WHERE `mainIngredient` IS NOT NULL")
+    }
+}
+
+/** v2 → v3: labels krijgen een kleur, kunnen verborgen worden en onthouden waarin ze zijn samengevoegd. Bestaande tags blijven zichtbaar en grijs. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `tag` ADD COLUMN `color` TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE `tag` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `tag` ADD COLUMN `mergedInto` TEXT DEFAULT NULL")
     }
 }

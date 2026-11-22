@@ -154,6 +154,93 @@ interface RecipeDao {
     )
     suspend fun search(match: String): List<RecipeEntity>
 
+    // --- labels ---
+
+    @Query("SELECT * FROM tag WHERE id = :id")
+    suspend fun tag(id: String): TagEntity?
+
+    @Update
+    suspend fun updateTag(tag: TagEntity)
+
+    @Query(
+        """
+        SELECT t.*, COUNT(r.id) AS recipes FROM tag t
+        LEFT JOIN recipe_tag rt ON rt.tagId = t.id AND rt.deletedAt IS NULL
+        LEFT JOIN recipe r ON r.id = rt.recipeId AND r.deletedAt IS NULL
+        WHERE t.deletedAt IS NULL
+        GROUP BY t.id
+        ORDER BY recipes DESC, t.nameKey
+        """
+    )
+    fun observeLabels(): Flow<List<LabelSummary>>
+
+    /** Alle koppelingen recept ↔ label (actief), voor het label-filter in de bibliotheek. */
+    @Query(
+        """
+        SELECT rt.* FROM recipe_tag rt JOIN tag t ON t.id = rt.tagId
+        WHERE rt.deletedAt IS NULL AND t.deletedAt IS NULL
+        """
+    )
+    fun observeRecipeTags(): Flow<List<RecipeTagEntity>>
+
+    @Query(
+        """
+        SELECT t.* FROM tag t JOIN recipe_tag rt ON rt.tagId = t.id
+        WHERE rt.recipeId = :recipeId AND rt.deletedAt IS NULL AND t.deletedAt IS NULL
+        ORDER BY t.nameKey
+        """
+    )
+    suspend fun labelsOf(recipeId: String): List<TagEntity>
+
+    @Query("SELECT recipeId FROM recipe_tag WHERE tagId = :tagId AND deletedAt IS NULL")
+    suspend fun recipeIdsWithTag(tagId: String): List<String>
+
+    /** @return aantal bijgewerkte rijen (0 = koppeling bestond nog niet). */
+    @Query("UPDATE recipe_tag SET deletedAt = :deletedAt, updatedAt = :now WHERE recipeId = :recipeId AND tagId = :tagId")
+    suspend fun setRecipeTag(recipeId: String, tagId: String, deletedAt: Long?, now: Long): Int
+
+    @Query("UPDATE recipe_tag SET deletedAt = :now, updatedAt = :now WHERE tagId = :tagId AND deletedAt IS NULL")
+    suspend fun softDeleteRecipeTagsOf(tagId: String, now: Long)
+
+    /** Recepten met (nog actief) dit label als gewijzigd markeren (sync). */
+    @Query(
+        """
+        UPDATE recipe SET updatedAt = :now WHERE deletedAt IS NULL
+        AND id IN (SELECT recipeId FROM recipe_tag WHERE tagId = :tagId AND deletedAt IS NULL)
+        """
+    )
+    suspend fun touchRecipesWithTag(tagId: String, now: Long)
+
+    /** Samenvoegen, stap 1: elk recept met [from] krijgt ook [into] (nieuwe koppeling). */
+    @Query(
+        """
+        INSERT OR IGNORE INTO recipe_tag (recipeId, tagId, createdAt, updatedAt, deletedAt)
+        SELECT recipeId, :into, :now, :now, NULL FROM recipe_tag WHERE tagId = :from AND deletedAt IS NULL
+        """
+    )
+    suspend fun copyTagLinks(from: String, into: String, now: Long)
+
+    /** Samenvoegen, stap 2: een eerder verwijderde koppeling met [into] weer aanzetten. */
+    @Query(
+        """
+        UPDATE recipe_tag SET deletedAt = NULL, updatedAt = :now WHERE tagId = :into AND deletedAt IS NOT NULL
+        AND recipeId IN (SELECT recipeId FROM recipe_tag WHERE tagId = :from AND deletedAt IS NULL)
+        """
+    )
+    suspend fun reviveTagLinks(from: String, into: String, now: Long)
+
+    /** De labelnamen in de zoekindex bijwerken voor alle recepten die (ooit) een van deze labels hadden. */
+    @Query(
+        """
+        UPDATE recipe_fts SET tags = COALESCE((
+            SELECT group_concat(t.name, char(10)) FROM recipe_tag rt JOIN tag t ON t.id = rt.tagId
+            WHERE rt.recipeId = recipe_fts.recipeId AND rt.deletedAt IS NULL AND t.deletedAt IS NULL
+        ), '')
+        WHERE recipeId IN (SELECT recipeId FROM recipe_tag WHERE tagId IN (:tagIds))
+        """
+    )
+    suspend fun refreshFtsTags(tagIds: List<String>)
+
     @Query(
         """
         SELECT t.name FROM tag t JOIN recipe_tag rt ON rt.tagId = t.id

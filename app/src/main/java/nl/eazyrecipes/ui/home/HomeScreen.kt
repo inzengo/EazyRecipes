@@ -64,6 +64,7 @@ fun HomeScreen(
     onImport: (String) -> Unit,
     pantry: @Composable () -> Unit,
     onOpenCategories: () -> Unit = {},
+    onOpenLabels: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(HomeTab.LIBRARY) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
@@ -87,7 +88,7 @@ fun HomeScreen(
             )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
-            HomeTab.MORE -> MoreScreen(onOpenCategories)
+            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels)
         }
         BottomNav(tab, accent, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -213,7 +214,7 @@ private fun SiteRow(letter: String, color: Color, name: String, note: String) {
 }
 
 @Composable
-private fun MoreScreen(onOpenCategories: () -> Unit) {
+private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 120.dp),
@@ -221,6 +222,7 @@ private fun MoreScreen(onOpenCategories: () -> Unit) {
         ) {
             Text("Meer", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(bottom = 12.dp))
             MoreRow(R.drawable.ph_bowl_food, Color(0xFFFF8A3D), "Categorieën", "Namen, kleuren en iconen", onOpenCategories)
+            MoreRow(R.drawable.ph_tag, Color(0xFF3FD0F0), "Labels", "Kleuren, samenvoegen, verbergen", onOpenLabels)
             MoreRow(R.drawable.ph_folder, Eazy.Snel.vivid, "Back-up maken en terugzetten", "Komt in fase 4")
             MoreRow(R.drawable.ph_share, Color(0xFF47E3BC), "Recepten delen", "Komt in fase 4")
             MoreRow(R.drawable.ph_chef_hat, Eazy.Brand, "Over EazyRecipes", "Versie ${BuildConfig.VERSION_NAME}")

@@ -12,6 +12,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.eazyrecipes.ui.categories.CategoriesScreen
+import nl.eazyrecipes.ui.labels.LabelsScreen
+import nl.eazyrecipes.ui.labels.LabelsViewModel
 import nl.eazyrecipes.ui.categories.CategoriesViewModel
 import nl.eazyrecipes.ui.theme.CategorySet
 import nl.eazyrecipes.ui.theme.LocalCategories
@@ -80,6 +82,7 @@ class MainActivity : ComponentActivity() {
                             onOpen = { nav.navigate(Routes.recipe(it)) },
                             onImport = { nav.navigate(Routes.import(it)) },
                             onOpenCategories = { nav.navigate(Routes.CATEGORIES) },
+                            onOpenLabels = { nav.navigate(Routes.LABELS) },
                             pantry = {
                                 val vm = viewModel { PantryViewModel(c.repository, getSharedPreferences("pantry", MODE_PRIVATE)) }
                                 PantryScreen(vm, onOpen = { nav.navigate(Routes.recipe(it)) })
@@ -107,6 +110,10 @@ class MainActivity : ComponentActivity() {
                         val id = entry.arguments?.getString("id").orEmpty()
                         val vm = viewModel { RecipeViewModel(id, c.repository, c.images, c.appScope) }
                         RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) }, onCook = { nav.navigate(Routes.cook(id)) })
+                    }
+                    composable(Routes.LABELS) {
+                        val vm = viewModel { LabelsViewModel(c.repository) }
+                        LabelsScreen(vm, onBack = { nav.popBackStack() })
                     }
                     composable(Routes.CATEGORIES) {
                         val vm = viewModel { CategoriesViewModel(c.repository) }
@@ -149,6 +156,7 @@ private object Routes {
     const val EDIT = "recipe/{id}/edit"
     const val COOK = "recipe/{id}/cook"
     const val CATEGORIES = "categories"
+    const val LABELS = "labels"
     fun import(url: String) = "import?url=${Uri.encode(url)}"
     fun recipe(id: String) = "recipe/$id"
     fun edit(id: String) = "recipe/$id/edit"

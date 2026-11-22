@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.eazyrecipes.data.CollectionSummary
+import nl.eazyrecipes.data.LabelSummary
 import nl.eazyrecipes.data.RecipeEntity
 import nl.eazyrecipes.data.RecipeRepository
 import nl.eazyrecipes.ui.theme.isQuick
@@ -54,9 +55,12 @@ data class LibraryFilter(
     val sort: SortOrder = SortOrder.RECENT,
     /** Geopende collectie: alleen haar recepten. */
     val collectionId: String? = null,
+    /** Label-ids: alleen recepten met álle gekozen labels. */
+    val labels: Set<String> = emptySet(),
 ) {
     /** Aantal filters uit de filter-sheet (voor het bolletje op de filterknop). */
-    val sheetCount: Int get() = (if (maxMinutes != null) 1 else 0) + (if (sources.isNotEmpty()) 1 else 0) + (if (sort != SortOrder.RECENT) 1 else 0)
+    val sheetCount: Int get() = (if (maxMinutes != null) 1 else 0) + (if (sources.isNotEmpty()) 1 else 0) +
+        (if (sort != SortOrder.RECENT) 1 else 0) + (if (labels.isNotEmpty()) 1 else 0)
 
     /** Niets gekozen: dan tonen we een uitgelicht recept. */
     val isPlain: Boolean get() = query.isBlank() && category == null && tab == LibraryTab.RECIPES && sheetCount == 0 && collectionId == null
@@ -73,6 +77,8 @@ data class LibraryUiState(
     val collections: List<CollectionSummary> = emptyList(),
     /** Recepten zonder bekende tijd: die vallen weg bij een tijdfilter (dat melden we in de sheet). */
     val unknownTimeCount: Int = 0,
+    /** Zichtbare labels met recepten, meest gebruikt eerst (voor het filter). */
+    val labels: List<LabelSummary> = emptyList(),
 ) {
     /** De collectie die nu open staat (of `null`). */
     val openCollection: CollectionSummary? get() = filter.collectionId?.let { id -> collections.firstOrNull { it.id == id } }
@@ -84,14 +90,22 @@ data class LibraryUiState(
 private val dutch: Collator = Collator.getInstance(Locale("nl", "NL")).apply { strength = Collator.PRIMARY }
 
 /** Pure filterlogica (getest in LibraryFilterTest). [ftsIds] = uitkomst van zoeken, of `null` als er niet gezocht wordt. */
-fun applyFilter(all: List<RecipeEntity>, ftsIds: Set<String>?, f: LibraryFilter, inCollection: Set<String>? = null): List<RecipeEntity> {
+fun applyFilter(
+    all: List<RecipeEntity>,
+    ftsIds: Set<String>?,
+    f: LibraryFilter,
+    inCollection: Set<String>? = null,
+    /** Per recept zijn label-ids. */
+    labelsOf: Map<String, Set<String>> = emptyMap(),
+): List<RecipeEntity> {
     val filtered = all.filter { r ->
         (inCollection == null || r.id in inCollection) &&
         (f.tab != LibraryTab.FAVORITES || r.favorite) &&
             categoryMatches(f.category, r) &&
             (ftsIds == null || r.id in ftsIds) &&
             (f.maxMinutes == null || (r.totalMinutes != null && r.totalMinutes <= f.maxMinutes)) &&
-            (f.sources.isEmpty() || r.sourceSite in f.sources)
+            (f.sources.isEmpty() || r.sourceSite in f.sources) &&
+            (f.labels.isEmpty() || labelsOf[r.id].orEmpty().containsAll(f.labels))
     }
     return when (f.sort) {
         SortOrder.RECENT -> filtered.sortedByDescending { it.createdAt }
@@ -132,23 +146,33 @@ class LibraryViewModel(
         .mapLatest { q -> if (q.isBlank()) null else repository.search(q).map { it.id }.toSet() }
 
     private val collections = repository.observeCollections()
-    private val categories = repository.observeCategories()
 
-    val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds, collections, categories) { all, raw, ids, cols, cats ->
-        // Een net verwijderde categorie als filter: dan gewoon alles tonen.
-        val f = if (raw.category == null || raw.category == QUICK || cats.any { it.id == raw.category }) raw else raw.copy(category = null)
+    /** Categorieën en labels samen (combine kan hooguit vijf bronnen). */
+    private data class Meta(val categoryIds: Set<String>, val labels: List<LabelSummary>, val labelsOf: Map<String, Set<String>>)
+
+    private val meta = combine(repository.observeCategories(), repository.observeLabels(), repository.observeRecipeLabels()) { cats, labels, of ->
+        Meta(cats.map { it.id }.toSet(), labels.filter { !it.tag.hidden && it.recipes > 0 }, of)
+    }
+
+    val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds, collections, meta) { all, raw, ids, cols, m ->
+        // Een net verwijderde categorie of label als filter: dan dat filter negeren.
+        val f = raw.copy(
+            category = raw.category?.takeIf { it == QUICK || it in m.categoryIds },
+            labels = raw.labels.filter { id -> m.labels.any { it.id == id } }.toSet(),
+        )
         val featured = featuredFor(all, f, today())
         // Een collectie die net verwijderd is, toont niets; de UI wist dan het filter.
         val inCollection = f.collectionId?.let { id -> cols.firstOrNull { it.id == id }?.recipes?.map { it.id }?.toSet() ?: emptySet() }
         LibraryUiState(
             total = all.size,
-            shown = applyFilter(all, ids, f, inCollection).filter { it.id != featured?.id },
+            shown = applyFilter(all, ids, f, inCollection, m.labelsOf).filter { it.id != featured?.id },
             featured = featured,
             filter = f,
             availableSources = all.mapNotNull { it.sourceSite }.distinct().sortedWith(dutch),
             savedUrls = all.mapNotNull { it.sourceUrl }.toSet(),
             collections = cols,
             unknownTimeCount = all.count { it.totalMinutes == null },
+            labels = m.labels,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

@@ -95,6 +95,17 @@ fun Chip(
     }
 }
 
+/** Label als pil: in zijn eigen paletkleur, of grijs zonder kleur. */
+@Composable
+fun LabelChip(name: String, color: String?, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    Chip(
+        name, R.drawable.ph_tag,
+        background = color?.let { nl.eazyrecipes.ui.theme.paletteColor(it).vivid } ?: Eazy.Grey,
+        modifier = modifier,
+        onClick = onClick,
+    )
+}
+
 /** Tijd-label op een kaart (zoals de mockup): geel "Snel · 25 min" bij ≤ 30 min, anders donker met witte tekst. */
 @Composable
 fun TimeBadge(text: String, quick: Boolean, modifier: Modifier = Modifier) {

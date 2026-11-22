@@ -3,6 +3,7 @@ package nl.eazyrecipes.data
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import nl.eazyrecipes.importer.ParsedRecipe
 import nl.eazyrecipes.importer.ParsedStep
 import java.net.URI
@@ -53,18 +54,14 @@ class RecipeRepository(
             )
         )
         insertChildren(id, parsed, now)
-        val tagIds = parsed.tags.map { name ->
-            val key = name.lowercase()
-            dao.insertTag(TagEntity(newId(), name, key, now, now))
-            checkNotNull(dao.tagByKey(key)).id
-        }.distinct()
+        val tagIds = parsed.tags.map { name -> labelId(name, now) }.distinct()
         dao.insertRecipeTags(tagIds.map { RecipeTagEntity(id, it, now, now) })
         dao.insertFts(
             RecipeFtsEntity(
                 recipeId = id,
                 title = parsed.title,
                 ingredients = parsed.ingredients.joinToString("\n"),
-                tags = parsed.tags.joinToString("\n"),
+                tags = dao.tagNames(id).joinToString("\n"),
             )
         )
         id
@@ -116,6 +113,7 @@ class RecipeRepository(
             ingredients = d.ingredients.filter { it.deletedAt == null }.sortedBy { it.position },
             steps = d.steps.filter { it.deletedAt == null }.sortedBy { it.position },
             tags = dao.tagNames(id),
+            labels = dao.labelsOf(id),
         )
     }
 
@@ -136,6 +134,119 @@ class RecipeRepository(
     suspend fun delete(id: String) = db.withTransaction {
         dao.softDelete(id, clock())
         dao.deleteFts(id)
+    }
+
+    // --- labels ---
+
+    /**
+     * Bestaand label met deze naam (ongeacht hoofdletters), of een nieuw.
+     * Was het samengevoegd, dan het label waarin het opging; was het gewoon verwijderd, dan komt het terug.
+     * [unhide]: de gebruiker typt het zelf in, dan moet hij het ook zien.
+     */
+    private suspend fun labelId(name: String, now: Long, unhide: Boolean = false): String {
+        val key = name.trim().lowercase()
+        dao.insertTag(TagEntity(newId(), name.trim(), key, now, now))
+        var tag = checkNotNull(dao.tagByKey(key))
+        repeat(10) { // alias volgen (a → b → c), met een grens tegen kringen
+            val next = tag.takeIf { it.deletedAt != null }?.mergedInto?.let { dao.tag(it) } ?: return@repeat
+            tag = next
+        }
+        when {
+            // Terug na verwijderen: met de schrijfwijze van nu, als het echt dít label is (niet het label waarin het opging).
+            tag.deletedAt != null -> dao.updateTag(
+                tag.copy(name = if (tag.nameKey == key) name.trim() else tag.name, deletedAt = null, mergedInto = null, hidden = false, updatedAt = now)
+            )
+            unhide && tag.hidden -> dao.updateTag(tag.copy(hidden = false, updatedAt = now))
+        }
+        return tag.id
+    }
+
+    private suspend fun activeTag(id: String): TagEntity? = dao.tag(id)?.takeIf { it.deletedAt == null }
+
+    /** Labels met hun aantal recepten, meest gebruikt eerst (ook verborgen; filter zelf op [TagEntity.hidden]). */
+    fun observeLabels(): Flow<List<LabelSummary>> = dao.observeLabels()
+
+    /** Per recept de ids van zijn labels. */
+    fun observeRecipeLabels(): Flow<Map<String, Set<String>>> =
+        dao.observeRecipeTags().map { rows -> rows.groupBy({ it.recipeId }, { it.tagId }).mapValues { it.value.toSet() } }
+
+    /** Nieuw label (of een bestaand met dezelfde naam, weer zichtbaar). @return het id. */
+    suspend fun createLabel(name: String): String = db.withTransaction { labelId(name, clock(), unhide = true) }
+
+    /** Label aan of uit voor een recept. */
+    suspend fun setRecipeLabel(recipeId: String, tagId: String, on: Boolean): Unit = db.withTransaction {
+        if (on && activeTag(tagId) == null) return@withTransaction
+        val now = clock()
+        if (dao.setRecipeTag(recipeId, tagId, deletedAt = if (on) null else now, now = now) == 0 && on) {
+            dao.insertRecipeTags(listOf(RecipeTagEntity(recipeId, tagId, now, now)))
+        }
+        dao.recipe(recipeId)?.takeIf { it.deletedAt == null }?.let { dao.updateRecipe(it.copy(updatedAt = now)) }
+        dao.refreshFtsTags(listOf(tagId))
+    }
+
+    /**
+     * Naam, kleur en verbergen in één keer (het bewerk-venster). Bestaat de nieuwe naam al als ander label, dan worden
+     * ze samengevoegd en krijgt het overblijvende label de gekozen kleur en zichtbaarheid. @return het overblijvende id.
+     */
+    suspend fun updateLabel(id: String, name: String, color: String?, hidden: Boolean): String = db.withTransaction {
+        val now = clock()
+        val tag = activeTag(id) ?: return@withTransaction id
+        val key = name.trim().lowercase().ifEmpty { tag.nameKey }
+        val other = dao.tagByKey(key)?.takeIf { it.id != id }
+        val survivor = when {
+            other == null -> tag.copy(name = name.trim().ifEmpty { tag.name }, nameKey = key)
+            other.deletedAt != null -> {
+                // De naam is van een eerder verwijderd label: dat maakt plaats (de sleutel is uniek, ook voor verwijderde).
+                dao.updateTag(other.copy(nameKey = "${other.nameKey}#${other.id}", updatedAt = now))
+                tag.copy(name = name.trim(), nameKey = key)
+            }
+            else -> {
+                mergeInto(id, other.id, now)
+                other.copy(name = name.trim())
+            }
+        }
+        dao.updateTag(survivor.copy(color = color, hidden = hidden, updatedAt = now))
+        dao.refreshFtsTags(listOf(id, survivor.id))
+        survivor.id
+    }
+
+    suspend fun renameLabel(id: String, name: String) {
+        val tag = activeTag(id) ?: return
+        updateLabel(id, name, tag.color, tag.hidden)
+    }
+
+    /** Voegt [fromId] samen met [intoId]: recepten krijgen [intoId], [fromId] verdwijnt (en verwijst voortaan naar [intoId]). */
+    suspend fun mergeLabels(fromId: String, intoId: String): Unit = db.withTransaction {
+        if (fromId == intoId || activeTag(intoId) == null || activeTag(fromId) == null) return@withTransaction
+        mergeInto(fromId, intoId, clock())
+        dao.refreshFtsTags(listOf(fromId, intoId))
+    }
+
+    private suspend fun mergeInto(fromId: String, intoId: String, now: Long) {
+        dao.touchRecipesWithTag(fromId, now)
+        dao.copyTagLinks(fromId, intoId, now)
+        dao.reviveTagLinks(fromId, intoId, now)
+        dao.softDeleteRecipeTagsOf(fromId, now)
+        dao.tag(fromId)?.let { dao.updateTag(it.copy(deletedAt = now, mergedInto = intoId, updatedAt = now)) }
+    }
+
+    suspend fun setLabelColor(id: String, color: String?) {
+        val tag = activeTag(id) ?: return
+        dao.updateTag(tag.copy(color = color, updatedAt = clock()))
+    }
+
+    suspend fun setLabelHidden(id: String, hidden: Boolean) {
+        val tag = activeTag(id) ?: return
+        dao.updateTag(tag.copy(hidden = hidden, updatedAt = clock()))
+    }
+
+    /** Label weg bij alle recepten (de recepten blijven). Een latere import met deze naam maakt het weer aan. */
+    suspend fun deleteLabel(id: String): Unit = db.withTransaction {
+        val now = clock()
+        dao.touchRecipesWithTag(id, now)
+        dao.softDeleteRecipeTagsOf(id, now)
+        dao.tag(id)?.let { dao.updateTag(it.copy(deletedAt = now, mergedInto = null, updatedAt = now)) }
+        dao.refreshFtsTags(listOf(id))
     }
 
     // --- categorieën ---
@@ -242,7 +353,10 @@ data class RecipeDetails(
     val recipe: RecipeEntity,
     val ingredients: List<IngredientEntity>,
     val steps: List<StepEntity>,
+    /** Namen van alle labels (ook verborgen), voor zoeken en de editor. */
     val tags: List<String>,
+    /** Labels als entiteit (kleur, verborgen), voor het receptscherm. */
+    val labels: List<TagEntity> = emptyList(),
 ) {
     /** Als bewerkbaar concept voor de editor. */
     fun toDraft(): ParsedRecipe = ParsedRecipe(

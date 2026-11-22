@@ -3,6 +3,7 @@ package nl.eazyrecipes.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import nl.eazyrecipes.importer.ParsedRecipe
 import nl.eazyrecipes.importer.ParsedStep
@@ -118,6 +119,70 @@ class RecipeRepositoryTest {
         repo.deleteCategory("vlees")
         assertEquals("vlees", repo.createCategory("vlees", "koraal", "cow"))
         assertEquals("vlees", repo.get(repo.save(kipKerrie.copy(categoryId = "vlees")))!!.recipe.categoryId)
+    }
+
+    @Test
+    fun `labels - koppelen, hernoemen, samenvoegen, kleur, verbergen, verwijderen`() = runTest {
+        val kip = repo.save(kipKerrie) // tags: Kip, Crème fraîche
+        val taart = repo.save(appeltaart) // tags: taart, KIP (= Kip)
+        fun labels() = runBlocking { repo.observeLabels().first().associate { it.name to it.recipes } }
+        assertEquals(mapOf("Kip" to 2, "Crème fraîche" to 1, "taart" to 1), labels())
+
+        // Zelf een label maken en aan een recept hangen.
+        val weekend = repo.createLabel("Weekend")
+        repo.setRecipeLabel(kip, weekend, true)
+        assertEquals(listOf("Crème fraîche", "Kip", "Weekend"), repo.get(kip)!!.labels.map { it.name })
+        assertEquals("zoekindex kent het nieuwe label", listOf(kip), repo.search("weekend").map { it.id })
+        assertEquals(mapOf(kip to setOf(weekend)), repo.observeRecipeLabels().first().mapValues { (_, v) -> v.filter { it == weekend }.toSet() }.filterValues { it.isNotEmpty() })
+
+        // Hernoemen; zoeken volgt.
+        repo.renameLabel(weekend, "Zondag")
+        assertEquals(listOf(kip), repo.search("zondag").map { it.id })
+        assertEquals(emptyList<String>(), repo.search("weekend").map { it.id })
+
+        // Hernoemen naar een bestaande naam = samenvoegen.
+        val taartId = repo.get(taart)!!.labels.first { it.name == "taart" }.id
+        repo.renameLabel(taartId, "zondag")
+        assertEquals(mapOf("Kip" to 2, "Crème fraîche" to 1, "zondag" to 2), labels())
+
+        // Kleur en verbergen.
+        val zondag = repo.observeLabels().first().first { it.name == "zondag" }.id
+        repo.setLabelColor(zondag, "geel")
+        repo.setLabelHidden(zondag, true)
+        with(repo.observeLabels().first().first { it.id == zondag }.tag) { assertEquals("geel", color); assertEquals(true, hidden) }
+
+        // Samenvoegen met de knop, dan verwijderen.
+        val creme = repo.observeLabels().first().first { it.name == "Crème fraîche" }.id
+        repo.mergeLabels(creme, zondag)
+        assertEquals(mapOf("Kip" to 2, "zondag" to 2), labels())
+        repo.deleteLabel(zondag)
+        assertEquals(mapOf("Kip" to 2), labels())
+        assertEquals(listOf("Kip"), repo.get(kip)!!.labels.map { it.name })
+
+        // Ontkoppelen.
+        val kipLabel = repo.get(kip)!!.labels.single().id
+        repo.setRecipeLabel(kip, kipLabel, false)
+        assertEquals(mapOf("Kip" to 1), labels())
+
+        // Een verwijderd label komt terug als een nieuw recept het meebrengt.
+        repo.save(ParsedRecipe(title = "Nieuw", tags = listOf("Zondag")))
+        assertEquals(1, labels()["Zondag"])
+    }
+
+    @Test
+    fun `samenvoegen - nieuwe import met de oude naam komt bij het samengevoegde label, kleur blijft`() = runTest {
+        repo.save(ParsedRecipe(title = "A", tags = listOf("veggie")))
+        repo.save(ParsedRecipe(title = "B", tags = listOf("Vegetarisch")))
+        val all = repo.observeLabels().first().associateBy { it.name }
+        // Via het bewerk-venster: hernoemen naar een bestaande naam mét een kleur = samenvoegen, kleur op het overblijvende label.
+        val survivor = repo.updateLabel(all.getValue("veggie").id, "vegetarisch", "groen", false)
+        assertEquals(all.getValue("Vegetarisch").id, survivor)
+        with(repo.observeLabels().first().single()) { assertEquals("vegetarisch", name); assertEquals("groen", tag.color); assertEquals(2, recipes) }
+
+        repo.save(ParsedRecipe(title = "C", tags = listOf("Veggie")))
+        assertEquals("geen dubbel label terug", listOf("vegetarisch" to 3), repo.observeLabels().first().map { it.name to it.recipes })
+        assertEquals(3, repo.search("vegetarisch").size)
+        assertEquals("oude naam staat niet meer in de zoekindex", 0, repo.search("veggie").size)
     }
 
     @Test

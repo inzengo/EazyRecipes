@@ -28,6 +28,11 @@ class LibraryFilterTest {
         assertEquals("alleen de eigen soort (categorieën zijn van de gebruiker)", listOf("Pasta pesto"), ids(LibraryFilter(category = "vega")))
         assertEquals(listOf("Linzensoep"), ids(LibraryFilter(category = "vegan")))
         assertEquals("eigen categorie", emptyList<String>(), ids(LibraryFilter(category = "c-soep")))
+        val labelsOf = mapOf("Kip kerrie" to setOf("l-snel", "l-week"), "Zalm" to setOf("l-week"))
+        fun withLabels(vararg l: String) = applyFilter(all, null, LibraryFilter(labels = l.toSet()), labelsOf = labelsOf).map { it.title }
+        assertEquals(listOf("Zalm", "Kip kerrie"), withLabels("l-week"))
+        assertEquals("álle gekozen labels", listOf("Kip kerrie"), withLabels("l-week", "l-snel"))
+        assertEquals(1, LibraryFilter(labels = setOf("l-week")).sheetCount)
         assertEquals("snel = ≤ 30 min, ongeacht soort", listOf("Pasta pesto", "Zalm", "Kip kerrie"), ids(LibraryFilter(category = QUICK)))
     }
 

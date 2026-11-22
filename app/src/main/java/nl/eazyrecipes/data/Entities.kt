@@ -100,6 +100,10 @@ data class StepEntity(
     val deletedAt: Long? = null,
 )
 
+/**
+ * Een label ("tag"): komt mee bij importeren (`keywords`, `recipeCategory`, …) of maak je zelf.
+ * In de app heten ze labels; je kunt ze hernoemen, samenvoegen, een kleur geven en verbergen.
+ */
 @Entity(tableName = "tag", indices = [Index("nameKey", unique = true)])
 data class TagEntity(
     @PrimaryKey val id: String,
@@ -109,7 +113,22 @@ data class TagEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    /** Sleutel uit de categoriepalet, of `null` = neutraal grijs. (v3) */
+    val color: String? = null,
+    /** Verborgen labels staan niet op het receptscherm en in het filter, maar tellen wel mee bij zoeken. (v3) */
+    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false,
+    /** Samengevoegd in dit label: een import met deze oude naam komt dan bij het nieuwe terecht. (v3) */
+    val mergedInto: String? = null,
 )
+
+/** Label met het aantal (niet-verwijderde) recepten dat het heeft. */
+data class LabelSummary(
+    @Embedded val tag: TagEntity,
+    val recipes: Int,
+) {
+    val id: String get() = tag.id
+    val name: String get() = tag.name
+}
 
 @Entity(
     tableName = "recipe_tag",

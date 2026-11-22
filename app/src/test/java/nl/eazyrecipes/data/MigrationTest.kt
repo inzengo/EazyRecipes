@@ -55,16 +55,22 @@ class MigrationTest {
         db.insert("ingredient", null, ContentValues().apply {
             put("id", "i1"); put("recipeId", "r1"); put("position", 0); put("raw", "200 gr kipfilet"); put("createdAt", 1L); put("updatedAt", 1L)
         })
+        db.insert("tag", null, ContentValues().apply {
+            put("id", "t1"); put("name", "Makkelijk"); put("nameKey", "makkelijk"); put("createdAt", 1L); put("updatedAt", 1L)
+        })
+        db.insert("recipe_tag", null, ContentValues().apply {
+            put("recipeId", "r1"); put("tagId", "t1"); put("createdAt", 1L); put("updatedAt", 1L)
+        })
         db.execSQL("INSERT INTO recipe_fts (recipeId, title, ingredients, tags) VALUES ('r1', 'Kip kerrie', '200 gr kipfilet', '')")
         db.version = 1
         db.close()
     }
 
     @Test
-    fun `v1 naar v2 - standaardcategorieen erbij, recepten houden hun soort`() = runBlocking {
+    fun `v1 naar v3 - standaardcategorieen erbij, recepten houden soort en labels`() = runBlocking {
         createV1()
         val db = Room.databaseBuilder(context, EazyDatabase::class.java, name)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .allowMainThreadQueries()
             .build()
         try {
@@ -77,6 +83,8 @@ class MigrationTest {
             assertEquals("zoet", byId.getValue("r4").categoryId)
             assertEquals("verwijderde recepten blijven weg", null, byId["r5"])
             db.query("SELECT COUNT(*) FROM category", null).use { it.moveToFirst(); assertEquals(5, it.getInt(0)) }
+            // Labels (v3): bestaande tag blijft, zichtbaar en zonder kleur.
+            with(repo.observeLabels().first().single()) { assertEquals("Makkelijk", name); assertEquals(1, recipes); assertNull(tag.color); assertEquals(false, tag.hidden) }
             // De rest is intact: ingrediënten en zoekindex.
             assertEquals(listOf("200 gr kipfilet"), repo.get("r1")!!.ingredients.map { it.raw })
             assertEquals(listOf("r1"), repo.search("kipf").map { it.id })

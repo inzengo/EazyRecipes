@@ -232,6 +232,16 @@ class ScreenshotTest {
         }
     }
 
+    @Config(qualifiers = "w393dp-h1000dp-xxhdpi")
+    @Test fun labels() = shot("11-labels") {
+        fun l(id: String, name: String, n: Int, color: String? = null, hidden: Boolean = false) =
+            nl.eazyrecipes.data.LabelSummary(nl.eazyrecipes.data.TagEntity(id, name, name.lowercase(), 0, 0, color = color, hidden = hidden), n)
+        nl.eazyrecipes.ui.labels.LabelsContent(
+            listOf(l("1", "Hoofdgerecht", 14, "oranje"), l("2", "Makkelijk", 9, hidden = true), l("3", "Weekend", 6, "lavendel"), l("4", "Pasta", 4, "geel"), l("5", "Oven", 3)),
+            nl.eazyrecipes.ui.labels.LabelActions(),
+        )
+    }
+
     @Test fun import_loading() = shot("03-import-loading") {
         // Nooit klaar, zodat de laad-toestand blijft staan.
         val vm = ImportViewModel(url, RecipeImporter({ kotlinx.coroutines.awaitCancellation() }, null), repo, ImageStore(tmp.newFolder(), noNetwork))

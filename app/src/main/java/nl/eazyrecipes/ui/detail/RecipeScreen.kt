@@ -63,6 +63,15 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import nl.eazyrecipes.data.LabelSummary
+import nl.eazyrecipes.data.TagEntity
+import nl.eazyrecipes.ui.components.LabelChip
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import kotlinx.coroutines.flow.stateIn
 import nl.eazyrecipes.data.CollectionSummary
 import nl.eazyrecipes.ui.components.DashedAddButton
@@ -229,6 +238,20 @@ class RecipeViewModel(
     val collections: StateFlow<List<CollectionSummary>> =
         repository.observeCollections().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Alle zichtbare labels (voor het kies-venster), meest gebruikt eerst. */
+    val allLabels: StateFlow<List<LabelSummary>> =
+        repository.observeLabels().map { list -> list.filter { !it.tag.hidden } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setLabel(tagId: String, on: Boolean) {
+        viewModelScope.launch { repository.setRecipeLabel(id, tagId, on); reload() }
+    }
+
+    fun addLabel(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { repository.setRecipeLabel(id, repository.createLabel(name), true); reload() }
+    }
+
     fun setInCollection(collectionId: String, member: Boolean) {
         viewModelScope.launch { repository.setInCollection(collectionId, id, member) }
     }
@@ -278,6 +301,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var pickCollections by rememberSaveable { mutableStateOf(false) }
     var coverOptions by rememberSaveable { mutableStateOf(false) }
+    var pickLabels by rememberSaveable { mutableStateOf(false) }
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let { vm.setCover(context.contentResolver, it) }
     }
@@ -383,9 +407,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
 
                 NoteField(vm.note, vm::onNoteChange)
 
-                if (d.tags.isNotEmpty()) {
-                    Text(d.tags.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = Eazy.Subtle)
-                }
+                LabelsRow(d.labels.filter { !it.hidden }, onEdit = { pickLabels = true })
 
                 TextButton(onClick = { confirmDelete = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text("Recept verwijderen", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
@@ -400,6 +422,11 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                     .shadow(18.dp, CircleShape, spotColor = Eazy.Ink.copy(alpha = 0.4f)),
             )
         }
+    }
+
+    val all by vm.allLabels.collectAsStateWithLifecycle()
+    if (pickLabels) {
+        LabelsSheet(all, d.labels.map { it.id }.toSet(), vm::setLabel, vm::addLabel, onDismiss = { pickLabels = false })
     }
 
     if (coverOptions) {
@@ -595,6 +622,77 @@ private fun SheetOption(icon: Int, title: String, sub: String, onClick: () -> Un
                 Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(sub, style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
             }
+        }
+    }
+}
+
+/** Labels van dit recept + een knop om ze te kiezen. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LabelsRow(labels: List<TagEntity>, onEdit: () -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        labels.forEach { LabelChip(it.name, it.color, onClick = onEdit) }
+        Chip(if (labels.isEmpty()) "Label toevoegen" else "Labels", R.drawable.ic_plus, Eazy.Paper, onClick = onEdit,
+            modifier = Modifier.dashedBorder(Eazy.Dash, 18.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun LabelsSheet(
+    all: List<LabelSummary>,
+    selected: Set<String>,
+    onToggle: (String, Boolean) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf("") }
+    var showAll by rememberSaveable { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding().imePadding(),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("Labels", style = MaterialTheme.typography.headlineSmall)
+            // Gekozen labels eerst, dan de meest gebruikte. De volgorde staat vast zolang het venster open is:
+            // anders springt een pil weg onder je vinger als je hem aantikt.
+            val initiallySelected = remember { selected }
+            val ordered = remember(all.map { it.id }) { all.sortedByDescending { it.id in initiallySelected } }
+            val shown = if (showAll) ordered else ordered.take(30)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                shown.forEach { l ->
+                    val on = l.id in selected
+                    Surface(
+                        onClick = { onToggle(l.id, !on) },
+                        shape = CircleShape,
+                        color = if (on) Eazy.Ink else Eazy.Grey,
+                        contentColor = if (on) Eazy.Paper else Eazy.Ink,
+                    ) {
+                        Row(Modifier.height(40.dp).padding(start = 12.dp, end = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Ico(if (on) R.drawable.ic_check else R.drawable.ic_plus, 15.dp)
+                            Text(l.name, style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+                if (!showAll && ordered.size > shown.size) {
+                    TextButton(onClick = { showAll = true }) { Text("+ ${ordered.size - shown.size} meer", color = Eazy.Ink) }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(32) },
+                    singleLine = true,
+                    placeholder = { Text("Nieuw label, bv. Weekend") },
+                    shape = CircleShape,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onCreate(name); name = "" }),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Eazy.Ink, cursorColor = Eazy.Ink),
+                    modifier = Modifier.weight(1f),
+                )
+                RoundButton(R.drawable.ic_plus, "Label toevoegen", { onCreate(name); name = "" }, background = Eazy.Ink, contentColor = Eazy.Paper)
+            }
+            Text("Kleuren, namen en samenvoegen regel je onder Meer → Labels.", style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
         }
     }
 }
