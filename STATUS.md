@@ -72,12 +72,9 @@ _Laatst bijgewerkt: 2026-11-19 (avond)_
 - **Kookmodus:** het scherm vult zich met de receptkleur, met een groot stapnummer. Noemt een stap een tijd ("10 minuten"), dan komt er een timerknop bij. Het scherm blijft aan.
 - **In huis:** ingrediënten aantikken. Je ziet dan de recepten die het best passen, met een score ("4/6") en wat je nog mist.
 
-## Eerst: online back-up (afgesproken 2026-11-19)
+## Online back-up
 
-De repo staat nu **alleen lokaal** (geen remote). Volgende sessie, vóór fase 3c:
-1. Privé-repo op GitHub. Ofwel de gebruiker logt in met `! gh auth login` en Claude maakt de repo aan met `gh repo create --private`, ofwel de gebruiker maakt zelf een lege privé-repo en geeft de link.
-2. `git remote add origin …` en `git push -u origin main`.
-3. Controleren dat `.gitignore` geen geheimen of machine-bestanden doorlaat (`local.properties` en keystores staan er al in).
+Remote `origin` = https://github.com/inzengo/EazyRecipes (privé). `main` volgt `origin/main`; push na elke afgeronde stap.
 
 ## Volgende stap: fase 3c — "In huis"
 
