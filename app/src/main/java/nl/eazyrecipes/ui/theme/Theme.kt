@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import nl.eazyrecipes.R
-import nl.eazyrecipes.data.MainIngredient
 
 // --- kleuren (design v0.2, zie STATUS.md) ---
 
@@ -42,16 +41,6 @@ object Eazy {
  * en een donkere variant ([deep]) voor iconen/cijfers op wit of grijs.
  */
 data class ContextColor(val label: String, val vivid: Color, val deep: Color, @DrawableRes val icon: Int)
-
-val MainIngredient?.context: ContextColor
-    get() = when (this) {
-        MainIngredient.VLEES -> ContextColor("Vlees", Color(0xFFFF5A4A), Color(0xFFC8261A), R.drawable.ph_cow)
-        MainIngredient.VIS -> ContextColor("Vis", Color(0xFF4D9DFF), Color(0xFF1F5FCC), R.drawable.ph_fish)
-        MainIngredient.VEGA -> ContextColor("Vega", Color(0xFF3DD66F), Color(0xFF167A3B), R.drawable.ph_leaf)
-        MainIngredient.VEGAN -> ContextColor("Vegan", Color(0xFF47E3BC), Color(0xFF0B7560), R.drawable.ph_plant)
-        MainIngredient.ZOET -> ContextColor("Zoet", Color(0xFFFF8AD4), Color(0xFFB0237A), R.drawable.ph_cake)
-        null -> Eazy.Alles
-    }
 
 /** Recepten van 30 minuten of korter krijgen het gele "Snel"-label. */
 fun isQuick(totalMinutes: Int?): Boolean = totalMinutes != null && totalMinutes <= 30

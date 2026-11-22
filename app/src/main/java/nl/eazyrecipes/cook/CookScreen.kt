@@ -75,6 +75,7 @@ import nl.eazyrecipes.ui.detail.RecipeViewModel
 import nl.eazyrecipes.ui.theme.BricolageDisplay
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
+import nl.eazyrecipes.ui.theme.accent
 
 class CookActions(
     val startTimer: (step: Int, seconds: Int) -> Unit = { _, _ -> },
@@ -137,8 +138,8 @@ fun CookContent(
     now: Long? = null,
     initialStep: Int = 0,
 ) {
-    val ctx = d.recipe.mainIngredient.context
-    val bg = if (d.recipe.mainIngredient == null) Eazy.Brand else ctx.vivid
+    val ctx = d.recipe.context
+    val bg = ctx.accent
     val steps = d.steps
     val pager = rememberPagerState(initialPage = initialStep) { steps.size.coerceAtLeast(1) }
     val scope = rememberCoroutineScope()

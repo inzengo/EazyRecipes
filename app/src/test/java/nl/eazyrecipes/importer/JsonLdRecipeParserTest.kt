@@ -1,6 +1,5 @@
 package nl.eazyrecipes.importer
 
-import nl.eazyrecipes.data.MainIngredient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -28,7 +27,7 @@ class JsonLdRecipeParserTest {
         assertEquals(30, r.totalMinutes)
         assertEquals("Hoofdgerechten", r.category)
         assertEquals("Aziatische recepten", r.cuisine)
-        assertEquals(MainIngredient.VLEES, r.mainIngredient)
+        assertEquals("vlees", r.categoryId)
 
         assertEquals(13, r.ingredients.size)
         assertEquals("150 gr rijst", r.ingredients.first())
@@ -55,7 +54,7 @@ class JsonLdRecipeParserTest {
         assertEquals(40, r.cookMinutes)
         assertEquals("totalTime van de bron wint van prep+cook", 100, r.totalMinutes)
         assertEquals("Bakrecepten", r.category)
-        assertEquals(MainIngredient.ZOET, r.mainIngredient)
+        assertEquals("zoet", r.categoryId)
         assertEquals(14, r.ingredients.size)
         assertEquals("250 gr zelfrijzend bakmeel", r.ingredients.first())
         assertEquals("de bron heeft 11 HowToSteps, waarvan 2 alleen \"\\n\" bevatten", 9, r.steps.size)
@@ -97,7 +96,7 @@ class JsonLdRecipeParserTest {
         assertEquals(4, r.servings)
         assertEquals("https://x.nl/a.jpg", r.imageUrl)
         assertEquals(listOf(ParsedStep("Kook de pasta."), ParsedStep("Roer de pesto erdoor.")), r.steps)
-        assertEquals(MainIngredient.VEGA, r.mainIngredient)
+        assertEquals("vega", r.categoryId)
     }
 
     @Test

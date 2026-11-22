@@ -47,7 +47,7 @@ class RecipeRepository(
                 totalMinutes = parsed.totalMinutes,
                 category = parsed.category,
                 cuisine = parsed.cuisine,
-                mainIngredient = parsed.mainIngredient,
+                categoryId = activeCategory(parsed.categoryId),
                 createdAt = now,
                 updatedAt = now,
             )
@@ -86,7 +86,7 @@ class RecipeRepository(
                 prepMinutes = edited.prepMinutes,
                 cookMinutes = edited.cookMinutes,
                 totalMinutes = edited.totalMinutes,
-                mainIngredient = edited.mainIngredient,
+                categoryId = activeCategory(edited.categoryId),
                 updatedAt = now,
             )
         )
@@ -136,6 +136,55 @@ class RecipeRepository(
     suspend fun delete(id: String) = db.withTransaction {
         dao.softDelete(id, clock())
         dao.deleteFts(id)
+    }
+
+    // --- categorieën ---
+
+    /** Alleen een bestaande (niet-verwijderde) categorie; anders geen soort. */
+    private suspend fun activeCategory(id: String?): String? = id?.let { dao.category(it)?.id }
+
+    fun observeCategories(): Flow<List<CategoryEntity>> = dao.observeCategories()
+
+    /**
+     * Nieuwe categorie achteraan. @return het id.
+     * Heet hij als een verwijderde standaardcategorie ("Vlees"), dan komt díe terug: dan blijft de gok bij importeren
+     * (vlees/vis/…) er recepten in zetten.
+     */
+    suspend fun createCategory(name: String, color: String, icon: String): String = db.withTransaction {
+        val now = clock()
+        val position = (dao.categories().maxOfOrNull { it.position } ?: -1) + 1
+        val default = DefaultCategories.all.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+        val old = default?.let { dao.categoryIncludingDeleted(it.id) }?.takeIf { it.deletedAt != null }
+        if (old != null) {
+            dao.updateCategory(old.copy(name = name.trim(), color = color, icon = icon, position = position, deletedAt = null, updatedAt = now))
+            return@withTransaction old.id
+        }
+        val id = newId()
+        dao.insertCategory(CategoryEntity(id, name.trim(), color, icon, position, now, now))
+        id
+    }
+
+    suspend fun updateCategory(id: String, name: String, color: String, icon: String) {
+        val old = dao.category(id) ?: return
+        dao.updateCategory(old.copy(name = name.trim(), color = color, icon = icon, updatedAt = clock()))
+    }
+
+    /** Verwijdert de categorie; haar recepten blijven bestaan, zonder soort. */
+    suspend fun deleteCategory(id: String) = db.withTransaction {
+        val now = clock()
+        dao.softDeleteCategory(id, now)
+        dao.clearCategory(id, now)
+    }
+
+    /** Eén plek naar voren (-1) of naar achteren (+1) in de volgorde. */
+    suspend fun moveCategory(id: String, delta: Int) = db.withTransaction {
+        val list = dao.categories().toMutableList()
+        val from = list.indexOfFirst { it.id == id }
+        val to = from + delta
+        if (from < 0 || to !in list.indices) return@withTransaction
+        list.add(to, list.removeAt(from))
+        val now = clock()
+        list.forEachIndexed { i, c -> if (c.position != i) dao.setCategoryPosition(c.id, i, now) }
     }
 
     // --- collecties ---
@@ -208,7 +257,7 @@ data class RecipeDetails(
         totalMinutes = recipe.totalMinutes,
         category = recipe.category,
         cuisine = recipe.cuisine,
-        mainIngredient = recipe.mainIngredient,
+        categoryId = recipe.categoryId,
         tags = tags,
         ingredients = ingredients.map { it.raw },
         steps = steps.map { ParsedStep(it.text, it.sectionName) },

@@ -153,7 +153,7 @@ zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we h
 - Tijd in een stap ("10 minuten", "1 uur", "5-7 min") → timerknop; timers lopen door met een melding (foreground notification).
 - Ingrediënten van de stap onderin, uitklapbaar.
 
-**4d — Eigen categorieën & labels** (wens 2026-11-22)
+**4d — Eigen categorieën & labels** (wens 2026-11-22; categorieën ✅ als 4d-1, labels = 4d-2)
 - **Categorieën bewerkbaar:** de vaste `MainIngredient`-enum wordt een tabel `category` (naam, kleur, icoon, volgorde).
   De vijf huidige worden de standaard en blijven werken (migratie Room v1 → v2). Je kunt ze hernoemen, verwijderen,
   van kleur/icoon wisselen en nieuwe toevoegen (bv. "Soep", "Ontbijt").

@@ -8,7 +8,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import nl.eazyrecipes.ui.categories.CategoriesScreen
+import nl.eazyrecipes.ui.categories.CategoriesViewModel
+import nl.eazyrecipes.ui.theme.CategorySet
+import nl.eazyrecipes.ui.theme.LocalCategories
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,7 +56,13 @@ class MainActivity : ComponentActivity() {
         TimerService.ensureRunning(this)
         val c = container
         setContent {
+            // Categorieën van de gebruiker voor alle schermen (kleur, icoon, naam per recept). Pas tekenen als ze er zijn
+            // (een paar ms): anders flitsen tegels en kleuren bij het opstarten van leeg naar gevuld.
+            val categoriesFlow = remember { c.repository.observeCategories() }
+            val categories by categoriesFlow.collectAsStateWithLifecycle(null)
+            val loaded = categories ?: return@setContent
             EazyTheme {
+              CompositionLocalProvider(LocalCategories provides remember(loaded) { CategorySet(loaded) }) {
                 val nav = rememberNavController()
 
                 LaunchedEffect(pendingShare) {
@@ -67,6 +79,7 @@ class MainActivity : ComponentActivity() {
                             library = library,
                             onOpen = { nav.navigate(Routes.recipe(it)) },
                             onImport = { nav.navigate(Routes.import(it)) },
+                            onOpenCategories = { nav.navigate(Routes.CATEGORIES) },
                             pantry = {
                                 val vm = viewModel { PantryViewModel(c.repository, getSharedPreferences("pantry", MODE_PRIVATE)) }
                                 PantryScreen(vm, onOpen = { nav.navigate(Routes.recipe(it)) })
@@ -95,6 +108,10 @@ class MainActivity : ComponentActivity() {
                         val vm = viewModel { RecipeViewModel(id, c.repository, c.images, c.appScope) }
                         RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) }, onCook = { nav.navigate(Routes.cook(id)) })
                     }
+                    composable(Routes.CATEGORIES) {
+                        val vm = viewModel { CategoriesViewModel(c.repository) }
+                        CategoriesScreen(vm, onBack = { nav.popBackStack() })
+                    }
                     composable(
                         Routes.COOK,
                         arguments = listOf(navArgument("id") { type = NavType.StringType }),
@@ -114,6 +131,7 @@ class MainActivity : ComponentActivity() {
                         EditRecipeScreen(vm, onDone = { nav.popBackStack() })
                     }
                 }
+              }
             }
         }
     }
@@ -130,6 +148,7 @@ private object Routes {
     const val RECIPE = "recipe/{id}"
     const val EDIT = "recipe/{id}/edit"
     const val COOK = "recipe/{id}/cook"
+    const val CATEGORIES = "categories"
     fun import(url: String) = "import?url=${Uri.encode(url)}"
     fun recipe(id: String) = "recipe/$id"
     fun edit(id: String) = "recipe/$id/edit"

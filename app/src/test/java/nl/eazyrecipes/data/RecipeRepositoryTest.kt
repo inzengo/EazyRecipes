@@ -26,7 +26,7 @@ class RecipeRepositoryTest {
 
     @Before
     fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).addCallback(nl.eazyrecipes.data.SeedCategories)
             .allowMainThreadQueries()
             .build()
         repo = RecipeRepository(db, clock = { now })
@@ -39,7 +39,7 @@ class RecipeRepositoryTest {
         title = "Kip kerrie",
         sourceUrl = "https://www.leukerecepten.nl/recepten/kip-kerrie/",
         totalMinutes = 30,
-        mainIngredient = MainIngredient.VLEES,
+        categoryId = "vlees",
         tags = listOf("Kip", "Crème fraîche"),
         ingredients = listOf("150 gr rijst", "200 gr kipfilet", "125 ml crème fraîche"),
         steps = listOf(ParsedStep("Kook de rijst.", "Bereiding"), ParsedStep("Bak de kip.", "Bereiding")),
@@ -57,7 +57,7 @@ class RecipeRepositoryTest {
 
         assertEquals("Kip kerrie", d.recipe.title)
         assertEquals("leukerecepten.nl", d.recipe.sourceSite)
-        assertEquals(MainIngredient.VLEES, d.recipe.mainIngredient)
+        assertEquals("vlees", d.recipe.categoryId)
         assertEquals(1_000L, d.recipe.createdAt)
         assertEquals(1_000L, d.recipe.updatedAt)
         assertNull(d.recipe.deletedAt)
@@ -89,6 +89,35 @@ class RecipeRepositoryTest {
         assertTrue(repo.search("lasagne").isEmpty())
         assertTrue("rare tekens breken de query niet", repo.search("\"*(-)").isEmpty())
         assertEquals("op tag", setOf(kip, taart), repo.search("kip").map { it.id }.toSet())
+    }
+
+    @Test
+    fun `categorieen - maken, wijzigen, volgorde, verwijderen maakt recepten soortloos`() = runTest {
+        assertEquals(listOf("vlees", "vis", "vega", "vegan", "zoet"), repo.observeCategories().first().map { it.id })
+        val soep = repo.createCategory("  Soep ", "aqua", "bowl-steam")
+        with(repo.observeCategories().first().last()) { assertEquals(soep, id); assertEquals("Soep", name); assertEquals(5, position) }
+
+        val id = repo.save(kipKerrie.copy(categoryId = soep))
+        assertEquals(soep, repo.get(id)!!.recipe.categoryId)
+        assertNull("onbekende categorie wordt geen soort", repo.get(repo.save(kipKerrie.copy(categoryId = "bestaat-niet")))!!.recipe.categoryId)
+
+        repo.updateCategory(soep, "Soepen", "oranje", "cooking-pot")
+        with(repo.observeCategories().first().first { it.id == soep }) { assertEquals("Soepen", name); assertEquals("oranje", color); assertEquals("cooking-pot", icon) }
+
+        repo.moveCategory(soep, -1)
+        assertEquals(listOf("vlees", "vis", "vega", "vegan", soep, "zoet"), repo.observeCategories().first().map { it.id })
+        repo.moveCategory("vlees", -1) // kan niet verder naar voren
+        assertEquals("vlees", repo.observeCategories().first().first().id)
+
+        now = 5_000L
+        repo.deleteCategory(soep)
+        assertEquals(listOf("vlees", "vis", "vega", "vegan", "zoet"), repo.observeCategories().first().map { it.id })
+        with(repo.get(id)!!.recipe) { assertNull(categoryId); assertEquals(5_000L, updatedAt) }
+
+        // Standaardcategorie weg en opnieuw "Vlees" maken: dezelfde (vaste) id komt terug, dus de import-gok werkt weer.
+        repo.deleteCategory("vlees")
+        assertEquals("vlees", repo.createCategory("vlees", "koraal", "cow"))
+        assertEquals("vlees", repo.get(repo.save(kipKerrie.copy(categoryId = "vlees")))!!.recipe.categoryId)
     }
 
     @Test
@@ -143,7 +172,7 @@ class RecipeRepositoryTest {
             id,
             draft.copy(
                 title = "Kip kerrie van mama",
-                mainIngredient = MainIngredient.VIS,
+                categoryId = "vis",
                 ingredients = listOf("300 gr kipdijfilet", "kokosmelk"),
                 steps = listOf(ParsedStep("Alles in de pan.")),
             ),
@@ -151,7 +180,7 @@ class RecipeRepositoryTest {
 
         val d = repo.get(id)!!
         assertEquals("Kip kerrie van mama", d.recipe.title)
-        assertEquals(MainIngredient.VIS, d.recipe.mainIngredient)
+        assertEquals("vis", d.recipe.categoryId)
         assertEquals(listOf("300 gr kipdijfilet", "kokosmelk"), d.ingredients.map { it.raw })
         assertEquals(listOf("Alles in de pan."), d.steps.map { it.text })
         assertEquals(5_000L, d.recipe.updatedAt)

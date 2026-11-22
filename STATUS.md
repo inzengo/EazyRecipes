@@ -10,7 +10,7 @@ _Laatst bijgewerkt: 2026-11-22_
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
 | 2 — Data + import | ✅ klaar |
 | 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
-| 4 — Koken, ordenen & delen | 🚧 4a–4c klaar, **4d (eigen categorieën & labels) volgende** — zie PLAN.md |
+| 4 — Koken, ordenen & delen | 🚧 4a–4c + 4d-1 (categorieën) klaar, **4d-2 (labels) volgende** — zie PLAN.md |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -18,13 +18,13 @@ _Laatst bijgewerkt: 2026-11-22_
 - **Repo:** Kotlin + Jetpack Compose-skelet (`app/`). Het delen-menu ("Delen → EazyRecipes") vangt al een link op en toont die.
 - **APK:** `assembleDebug` werkt. Output: `E:\DevTools\builds\EazyRecipes\app\outputs\apk\debug\app-debug.apk`.
   Nog **niet** op een telefoon getest.
-- **Datamodel (Room 2.7, KSP2):** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, plus de FTS4-index `recipe_fts`. Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
+- **Datamodel (Room 2.7, KSP2), schema v2:** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, category, plus de FTS4-index `recipe_fts`. Migratie v1 → v2 in `EazyDatabase.kt` (getest met een echte v1-database uit `app/schemas/.../1.json`, `MigrationTest`). Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
   Zoeken: elk woord als prefix ("kipf" vindt "kipfilet"), zonder accenten ("creme" vindt "crème"). Schema-export staat in `app/schemas/`.
 - **Importer:** `app/src/main/java/nl/eazyrecipes/importer/`.
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 99 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 103 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -112,9 +112,16 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
   - `TimerService`: voorgrond-service (type specialUse) met aftellende melding, wake-lock tot de timer afloopt, en een eigen alarmgeluid in een lus (ook als meldingen uit staan) tot je "Stoppen" tikt. Meldingstoestemming wordt één keer gevraagd bij de eerste timer.
   - **Op de telefoon testen:** timer laten aflopen met het scherm uit, met de app gesloten, en met meldingen uit.
 
+- **4d-1** eigen categorieën:
+  - `CategoryEntity` (naam, kleur, icoon, volgorde, soft-delete) vervangt de vaste `MainIngredient`-soorten; recepten hebben `categoryId`. De vijf standaardsoorten hebben vaste ids (`vlees`, `vis`, `vega`, `vegan`, `zoet`), zodat de gok bij import er een categorie van maakt. Een verwijderde standaardsoort met dezelfde naam opnieuw maken zet hem terug.
+  - Palet: 14 kleuren in de stijl van de app (fel vlak, zwarte tekst ≥ 6:1, plus donkere variant), waarvan de eerste zes de originele contextkleuren. 30 Phosphor-iconen (fill). Zie `ui/theme/CategoryStyle.kt`.
+  - Beheer: Meer → Categorieën (hernoemen, kleur, icoon, volgorde, toevoegen, verwijderen; recepten blijven bewaard zonder soort). Kies-soort in de editor toont je eigen categorieën.
+  - "Vega toont ook vegan" is vervallen: een tegel toont nu precies zijn eigen soort.
+  - Alle schermen halen kleur/icoon via `LocalCategories` (gevuld in `MainActivity`).
+
 ## Volgende stap
 
-1. **4d** — eigen categorieën (naam, kleur uit vaste palet, icoon) en labels; Room-migratie v1 → v2.
+1. **4d-2** — labels: geïmporteerde tags worden eigen labels (hernoemen, samenvoegen, kleur uit dezelfde palet, verbergen), filteren op label, labels op het detailscherm.
 2. Nog steeds: alles op de telefoon testen (fase 3 + 4a–4c). Let bij 4b op omrekenen en foto kiezen; bij 4c op de timers (zie hierboven).
 
 ## Open punten

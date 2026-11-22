@@ -50,6 +50,7 @@ import nl.eazyrecipes.ui.components.StatusBarBackdrop
 import nl.eazyrecipes.ui.home.ColorHero
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
+import nl.eazyrecipes.ui.theme.accent
 
 /** Zoveel chips staan er standaard; de rest achter "+ N meer". */
 private const val CHIPS_COLLAPSED = 18
@@ -202,8 +203,8 @@ private fun CustomField(onAdd: (String) -> Unit) {
 
 @Composable
 private fun MatchRow(m: PantryMatch, onClick: () -> Unit) {
-    val ctx = m.recipe.mainIngredient.context
-    val scoreColor = if (m.recipe.mainIngredient == null) Eazy.Brand else ctx.vivid
+    val ctx = m.recipe.context
+    val scoreColor = ctx.accent
     Surface(onClick = onClick, shape = RoundedCornerShape(26.dp), color = Eazy.Paper, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
         Row(
             Modifier.padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 14.dp),

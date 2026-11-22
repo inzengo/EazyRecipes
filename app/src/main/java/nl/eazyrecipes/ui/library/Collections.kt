@@ -50,6 +50,7 @@ import nl.eazyrecipes.ui.components.RecipePhoto
 import nl.eazyrecipes.ui.components.dashedBorder
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
+import nl.eazyrecipes.ui.theme.LocalCategories
 
 /** Wat de bibliotheek met collecties kan doen. */
 data class CollectionActions(
@@ -118,8 +119,9 @@ private fun CollectionCard(c: CollectionSummary, onOpen: () -> Unit, onMenu: () 
             Row(Modifier.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(if (c.recipes.size == 1) "1 recept" else "${c.recipes.size} recepten", style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
                 // Stipjes: welke soorten erin zitten.
-                c.recipes.mapNotNull { it.mainIngredient }.distinct().take(5).forEach { m ->
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(m.context.vivid))
+                val cats = LocalCategories.current
+                c.recipes.mapNotNull { r -> cats[r.categoryId] }.distinct().take(5).forEach { cat ->
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(cat.context.vivid))
                 }
             }
         }
@@ -132,7 +134,7 @@ private fun Mosaic(recipes: List<RecipeEntity>) {
     @Composable
     fun Tile(r: RecipeEntity?, m: Modifier) {
         if (r == null) Box(m.background(Eazy.Placeholder))
-        else RecipePhoto(r.imagePath, r.imageUrl, r.mainIngredient.context, m, iconSize = 28.dp)
+        else RecipePhoto(r.imagePath, r.imageUrl, r.context, m, iconSize = 28.dp)
     }
     Row(Modifier.fillMaxWidth().height(132.dp).clip(RoundedCornerShape(20.dp)), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Tile(recipes.getOrNull(0), Modifier.weight(1f).fillMaxSize())

@@ -16,10 +16,30 @@ import androidx.room.Relation
  * - entiteiten hebben een UUID als id; koppeltabellen een samengestelde sleutel van twee UUID's.
  */
 
-/** Bepaalt de contextkleur in de UI. "Snel" is geen hoofdingrediënt; dat volgt uit [RecipeEntity.totalMinutes]. */
+/**
+ * Wat de importer raadt als hoofdingrediënt. Sinds schema v2 bepaalt [RecipeEntity.categoryId] de soort; dit is alleen
+ * nog de uitkomst van de gok, die op een standaardcategorie wordt gezet (zie [DefaultCategories]).
+ */
 enum class MainIngredient { VLEES, VIS, VEGA, VEGAN, ZOET }
 
-@Entity(tableName = "recipe", indices = [Index("sourceUrl"), Index("updatedAt")])
+/**
+ * Soort recept (vlees, vis, … of iets eigens als "Soep"): naam, kleur en icoon kies je zelf.
+ * [color] en [icon] zijn sleutels uit de vaste palet- en iconenlijst (`ui/theme/CategoryStyle.kt`), zodat het design klopt.
+ */
+@Entity(tableName = "category")
+data class CategoryEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val color: String,
+    val icon: String,
+    /** Volgorde van de tegels in de bibliotheek. */
+    val position: Int,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
+@Entity(tableName = "recipe", indices = [Index("sourceUrl"), Index("updatedAt"), Index("categoryId")])
 data class RecipeEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -37,7 +57,10 @@ data class RecipeEntity(
     val totalMinutes: Int? = null,
     val category: String? = null,
     val cuisine: String? = null,
+    /** v1-veld; sinds v2 niet meer gebruikt (vervangen door [categoryId]). Blijft staan: een kolom weghalen vergt in SQLite een hele tabel-herbouw. */
     val mainIngredient: MainIngredient? = null,
+    /** Soort recept, zie [CategoryEntity]. `null` = geen soort. Geen foreign key: een verwijderde categorie is een soft-delete. */
+    val categoryId: String? = null,
     val notes: String? = null,
     val favorite: Boolean = false,
     val createdAt: Long,

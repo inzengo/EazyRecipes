@@ -21,7 +21,7 @@ class PantryViewModelTest {
     private val prefs get() = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("pantry-test", Context.MODE_PRIVATE)
 
     @Before fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).allowMainThreadQueries().build()
+        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).addCallback(nl.eazyrecipes.data.SeedCategories).allowMainThreadQueries().build()
         prefs.edit().clear().commit()
     }
 

@@ -68,25 +68,32 @@ import nl.eazyrecipes.ui.formatMinutes
 import nl.eazyrecipes.ui.theme.ContextColor
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
+import nl.eazyrecipes.ui.theme.LocalCategories
+import nl.eazyrecipes.data.CategoryEntity
+import androidx.compose.runtime.ReadOnlyComposable
 import nl.eazyrecipes.ui.theme.isQuick
 
-val Category.color: ContextColor
-    get() = when (this) {
-        Category.ALLES -> Eazy.Alles
-        Category.SNEL -> Eazy.Snel
-        else -> main.context
-    }
+/** Kleur en icoon van een tegel: alles (`null`), [QUICK], of een categorie-id. */
+@Composable
+@ReadOnlyComposable
+fun tileContext(category: String?): ContextColor = when (category) {
+    null -> Eazy.Alles
+    QUICK -> Eazy.Snel
+    else -> LocalCategories.current.context(category)
+}
 
-private val Category.heroTitle: String
-    get() = when (this) {
-        Category.ALLES -> "Wat koken we\nvanavond?"
-        Category.ZOET -> "Zoet &\nbakken"
-        Category.SNEL -> "Snel\nklaar"
-        else -> color.label
-    }
+@Composable
+@ReadOnlyComposable
+private fun heroTitle(category: String?): String = when (category) {
+    null -> "Wat koken we\nvanavond?"
+    QUICK -> "Snel\nklaar"
+    else -> tileContext(category).label
+}
 
-/** Kleur van de kop (en de balk achter de klok): wit bij "Alles", anders de contextkleur. */
-val LibraryFilter.heroColor: Color get() = if (category == Category.ALLES) Eazy.Paper else category.color.vivid
+/** Kleur van de kop (en de balk achter de klok): wit bij "Alles", anders de kleur van de tegel. */
+@Composable
+@ReadOnlyComposable
+fun heroColor(f: LibraryFilter): Color = tileContext(f.category).let { if (it == Eazy.Alles) Eazy.Paper else it.vivid }
 
 private fun recipes(n: Int) = if (n == 1) "1 recept" else "$n recepten"
 
@@ -138,7 +145,7 @@ fun LibraryScreen(
                 Hero(state, f, query, onQuery, onSearch = { focus.clearFocus() }, onOpenFilters = { focus.clearFocus(); filtersOpen = true })
             }
             item(span = StaggeredGridItemSpan.FullLine, key = "tiles") {
-                CategoryTiles(f.category) { c ->
+                CategoryTiles(f.category, LocalCategories.current.list) { c ->
                     onFilter { it.copy(category = c, tab = if (it.tab == LibraryTab.COLLECTIONS) LibraryTab.RECIPES else it.tab) }
                 }
             }
@@ -154,9 +161,9 @@ fun LibraryScreen(
                 }
                 state.total == 0 -> item(span = StaggeredGridItemSpan.FullLine, key = "welcome") { Welcome() }
                 state.shown.isEmpty() && state.featured == null -> item(span = StaggeredGridItemSpan.FullLine, key = "empty") {
-                    if (state.openCollection != null && f.query.isBlank() && f.category == Category.ALLES && f.sheetCount == 0) {
+                    if (state.openCollection != null && f.query.isBlank() && f.category == null && f.sheetCount == 0) {
                         Empty("Deze collectie is nog leeg", "Open een recept en tik op het mapje om het hier te zetten.")
-                    } else if (f.tab == LibraryTab.FAVORITES && f.query.isBlank() && f.category == Category.ALLES && f.sheetCount == 0) {
+                    } else if (f.tab == LibraryTab.FAVORITES && f.query.isBlank() && f.category == null && f.sheetCount == 0) {
                         Empty("Nog geen favorieten", "Tik op het hartje bij een recept, dan staat het hier.")
                     } else {
                         Empty("Niets gevonden", "Probeer een ander woord of wis een filter.")
@@ -172,7 +179,7 @@ fun LibraryScreen(
                 }
             }
         }
-        StatusBarBackdrop(f.heroColor)
+        StatusBarBackdrop(heroColor(f))
     }
 
     if (filtersOpen && state != null) {
@@ -182,13 +189,13 @@ fun LibraryScreen(
 
 @Composable
 private fun Hero(state: LibraryUiState?, f: LibraryFilter, query: String, onQuery: (String) -> Unit, onSearch: () -> Unit, onOpenFilters: () -> Unit) {
-    val c = f.category.color
-    val plainAlles = f.category == Category.ALLES
+    val c = tileContext(f.category)
+    val plainAlles = f.category == null
     val collection = state?.openCollection
     val title = when {
         collection != null -> collection.name
         f.tab == LibraryTab.FAVORITES && plainAlles -> "Jouw\nfavorieten"
-        else -> f.category.heroTitle
+        else -> heroTitle(f.category)
     }
     val count = state?.count ?: 0
     val sub = when {
@@ -205,7 +212,7 @@ private fun Hero(state: LibraryUiState?, f: LibraryFilter, query: String, onQuer
             .bleed(20.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp))
-            .background(f.heroColor)
+            .background(heroColor(f))
     ) {
         // Watermerk: groot icoon rechtsboven. matchParentSize: het bepaalt de hoogte van de kop niet mee.
         Box(Modifier.matchParentSize()) {
@@ -287,13 +294,13 @@ private fun FilterButton(count: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CategoryTiles(selected: Category, onPick: (Category) -> Unit) {
+private fun CategoryTiles(selected: String?, categories: List<CategoryEntity>, onPick: (String?) -> Unit) {
     Row(
         Modifier.bleed(20.dp).horizontalScroll(rememberScrollState()).padding(start = 14.dp, end = 14.dp, top = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Category.entries.forEach { cat ->
-            val c = cat.color
+        (listOf<String?>(null) + categories.map { it.id } + QUICK).forEach { cat ->
+            val c = tileContext(cat)
             val on = cat == selected
             Surface(onClick = { onPick(cat) }, color = Color.Transparent, shape = RoundedCornerShape(24.dp)) {
                 Column(
@@ -311,7 +318,7 @@ private fun CategoryTiles(selected: Category, onPick: (Category) -> Unit) {
                             .clip(RoundedCornerShape(24.dp))
                             .background(c.vivid),
                         contentAlignment = Alignment.Center,
-                    ) { Ico(c.icon, 32.dp, tint = if (cat == Category.ALLES) Eazy.Paper else Eazy.Ink) }
+                    ) { Ico(c.icon, 32.dp, tint = if (cat == null) Eazy.Paper else Eazy.Ink) }
                     Text(c.label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold))
                 }
             }
@@ -350,9 +357,10 @@ private fun Tabs(selected: LibraryTab, onPick: (LibraryTab) -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ActiveChips(f: LibraryFilter, collectionName: String?, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit) {
+    val categoryLabel = tileContext(f.category).label
     val chips = buildList {
         collectionName?.let { add(it to { onFilter { f -> f.copy(collectionId = null) } }) }
-        if (f.category != Category.ALLES) add(f.category.color.label to { onFilter { it.copy(category = Category.ALLES) } })
+        if (f.category != null) add(categoryLabel to { onFilter { it.copy(category = null) } })
         f.maxMinutes?.let { m -> add("≤ ${formatMinutes(m)}" to { onFilter { it.copy(maxMinutes = null) } }) }
         f.sources.forEach { s -> add(s to { onFilter { it.copy(sources = it.sources - s) } }) }
         if (f.sort != SortOrder.RECENT) add(f.sort.label to { onFilter { it.copy(sort = SortOrder.RECENT) } })
@@ -372,7 +380,7 @@ private fun ActiveChips(f: LibraryFilter, collectionName: String?, onFilter: ((L
 
 @Composable
 private fun Featured(r: RecipeEntity, onClick: () -> Unit) {
-    val ctx = r.mainIngredient.context
+    val ctx = r.context
     Surface(onClick = onClick, shape = RoundedCornerShape(30.dp), modifier = Modifier.fillMaxWidth().height(236.dp)) {
         Box {
             RecipePhoto(r.imagePath, r.imageUrl, ctx, Modifier.fillMaxSize(), iconSize = 120.dp)
@@ -385,7 +393,7 @@ private fun Featured(r: RecipeEntity, onClick: () -> Unit) {
                 Ico(R.drawable.ph_sparkle, 14.dp, tint = Eazy.Ink)
                 Text("Vanavond misschien?", style = MaterialTheme.typography.labelSmall, color = Eazy.Ink)
             }
-            if (r.mainIngredient != null) Box(
+            if (ctx != Eazy.Alles) Box(
                 Modifier.align(Alignment.TopEnd).padding(14.dp).size(40.dp).clip(RoundedCornerShape(14.dp)).background(ctx.vivid),
                 contentAlignment = Alignment.Center,
             ) { Ico(ctx.icon, 22.dp, tint = Eazy.Ink, contentDescription = ctx.label) }
@@ -403,14 +411,14 @@ private fun Featured(r: RecipeEntity, onClick: () -> Unit) {
 
 @Composable
 private fun RecipeCard(r: RecipeEntity, height: Dp, onClick: () -> Unit, onFavorite: () -> Unit, modifier: Modifier = Modifier) {
-    val ctx = r.mainIngredient.context
+    val ctx = r.context
     Box(modifier) {
         Surface(onClick = onClick, color = Color.Transparent) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(24.dp))) {
                     RecipePhoto(r.imagePath, r.imageUrl, ctx, Modifier.fillMaxSize())
                     // Categorie-sticker: kleur + icoon (kleur is nooit het enige signaal). Zonder soort: geen sticker.
-                    if (r.mainIngredient != null) Box(
+                    if (ctx != Eazy.Alles) Box(
                         Modifier.padding(8.dp).size(34.dp).clip(RoundedCornerShape(12.dp)).background(ctx.vivid),
                         contentAlignment = Alignment.Center,
                     ) { Ico(ctx.icon, 19.dp, tint = Eazy.Ink, contentDescription = ctx.label) }

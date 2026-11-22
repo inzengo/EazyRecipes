@@ -11,7 +11,6 @@ import kotlinx.coroutines.runBlocking
 import nl.eazyrecipes.data.CollectionEntity
 import nl.eazyrecipes.data.CollectionSummary
 import nl.eazyrecipes.data.EazyDatabase
-import nl.eazyrecipes.data.MainIngredient
 import nl.eazyrecipes.data.RecipeEntity
 import nl.eazyrecipes.data.RecipeRepository
 import nl.eazyrecipes.importer.FetchResult
@@ -25,7 +24,7 @@ import nl.eazyrecipes.ui.importflow.ImportScreen
 import nl.eazyrecipes.ui.importflow.ImportUiState
 import nl.eazyrecipes.ui.importflow.ImportViewModel
 import nl.eazyrecipes.ui.home.HomeScreen
-import nl.eazyrecipes.ui.library.Category
+import nl.eazyrecipes.ui.library.QUICK
 import nl.eazyrecipes.ui.library.LibraryFilter
 import nl.eazyrecipes.ui.library.LibraryScreen
 import nl.eazyrecipes.ui.library.LibraryTab
@@ -77,7 +76,7 @@ class ScreenshotTest {
                 })
             }.build()
         }
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).addCallback(nl.eazyrecipes.data.SeedCategories)
             .allowMainThreadQueries().build()
         repo = RecipeRepository(db)
     }
@@ -111,8 +110,8 @@ class ScreenshotTest {
         }
     }
 
-    private fun recipe(title: String, m: MainIngredient, minutes: Int?, fav: Boolean = false, site: String? = null) = RecipeEntity(
-        id = title, title = title, mainIngredient = m, totalMinutes = minutes, favorite = fav, sourceSite = site, createdAt = 0, updatedAt = 0,
+    private fun recipe(title: String, m: String, minutes: Int?, fav: Boolean = false, site: String? = null) = RecipeEntity(
+        id = title, title = title, categoryId = m, totalMinutes = minutes, favorite = fav, sourceSite = site, createdAt = 0, updatedAt = 0,
     )
 
     private fun importVm(fetch: FetchResult) =
@@ -127,12 +126,12 @@ class ScreenshotTest {
     )
 
     private val sample = listOf(
-        recipe("Kip kerrie: romig en vers gemaakt", MainIngredient.VLEES, 30, fav = true, site = "leukerecepten.nl"),
-        recipe("Appelkruimeltaart", MainIngredient.ZOET, 100, site = "leukerecepten.nl"),
-        recipe("Zalm uit de oven met citroen", MainIngredient.VIS, 25, site = "eefkooktzo.nl"),
-        recipe("Champignon bourguignon", MainIngredient.VEGA, 60, site = "leukerecepten.nl"),
-        recipe("Linzensoep", MainIngredient.VEGAN, 45, site = "eefkooktzo.nl"),
-        recipe("Griekse aardappelstoof", MainIngredient.VEGA, 50, site = "leukerecepten.nl"),
+        recipe("Kip kerrie: romig en vers gemaakt", "vlees", 30, fav = true, site = "leukerecepten.nl"),
+        recipe("Appelkruimeltaart", "zoet", 100, site = "leukerecepten.nl"),
+        recipe("Zalm uit de oven met citroen", "vis", 25, site = "eefkooktzo.nl"),
+        recipe("Champignon bourguignon", "vega", 60, site = "leukerecepten.nl"),
+        recipe("Linzensoep", "vegan", 45, site = "eefkooktzo.nl"),
+        recipe("Griekse aardappelstoof", "vega", 50, site = "leukerecepten.nl"),
     ).mapIndexed { i, r -> r.copy(createdAt = i.toLong()) }
 
     @Test fun library_empty() = shot("01-library-empty") {
@@ -145,7 +144,7 @@ class ScreenshotTest {
 
     @Config(qualifiers = "w393dp-h1400dp-xxhdpi")
     @Test fun library_category_with_filters() = shot("02b-library-vega-filters") {
-        LibraryScreen(libraryState(sample, LibraryFilter(category = Category.VEGA, maxMinutes = 60, sort = SortOrder.QUICK)), {}, {}, {})
+        LibraryScreen(libraryState(sample, LibraryFilter(category = "vega", maxMinutes = 60, sort = SortOrder.QUICK)), {}, {}, {})
     }
 
     private val sampleCollections by lazy {
@@ -182,11 +181,11 @@ class ScreenshotTest {
     private val pantryRecipes by lazy {
         nl.eazyrecipes.ui.pantry.PantryMatcher.index(
             listOf(
-                recipe("Shakshuka met feta", MainIngredient.VEGA, 25) to listOf("4 eieren", "1 blik tomatenblokjes", "1 ui", "1 rode paprika", "2 tenen knoflook", "75 g feta", "zout en peper"),
-                recipe("Kip kerrie: romig en vers gemaakt", MainIngredient.VLEES, 30) to listOf("150 gr rijst", "200 gr kipfilet", "1 ui", "2 tl kerriepoeder", "125 ml crème fraîche", "1 rode paprika"),
-                recipe("Zalm uit de oven met citroen", MainIngredient.VIS, 25) to listOf("2 zalmfilets", "1 citroen", "300 g krieltjes", "2 el olijfolie"),
-                recipe("Linzensoep", MainIngredient.VEGAN, 45) to listOf("200 g rode linzen", "1 ui", "2 wortels", "1 blik tomatenblokjes", "1 l groentebouillon", "1 tl komijn"),
-                recipe("Appelkruimeltaart", MainIngredient.ZOET, 100) to listOf("4 appels", "200 g bloem", "150 g boter", "100 g suiker", "1 ei"),
+                recipe("Shakshuka met feta", "vega", 25) to listOf("4 eieren", "1 blik tomatenblokjes", "1 ui", "1 rode paprika", "2 tenen knoflook", "75 g feta", "zout en peper"),
+                recipe("Kip kerrie: romig en vers gemaakt", "vlees", 30) to listOf("150 gr rijst", "200 gr kipfilet", "1 ui", "2 tl kerriepoeder", "125 ml crème fraîche", "1 rode paprika"),
+                recipe("Zalm uit de oven met citroen", "vis", 25) to listOf("2 zalmfilets", "1 citroen", "300 g krieltjes", "2 el olijfolie"),
+                recipe("Linzensoep", "vegan", 45) to listOf("200 g rode linzen", "1 ui", "2 wortels", "1 blik tomatenblokjes", "1 l groentebouillon", "1 tl komijn"),
+                recipe("Appelkruimeltaart", "zoet", 100) to listOf("4 appels", "200 g bloem", "150 g boter", "100 g suiker", "1 ei"),
             )
         )
     }
@@ -212,6 +211,24 @@ class ScreenshotTest {
         )
         shot("09-cook") {
             nl.eazyrecipes.cook.CookContent(d, factor = 1.0, servings = d.recipe.servings, timers = timers, actions = nl.eazyrecipes.cook.CookActions(), now = now, initialStep = 1)
+        }
+    }
+
+    @Config(qualifiers = "w393dp-h1300dp-xxhdpi")
+    @Test fun categories() = shot("10-categories") {
+        val rows = nl.eazyrecipes.data.DefaultCategories.entities().map { nl.eazyrecipes.ui.categories.CategoryRow(it, 3) } +
+            nl.eazyrecipes.ui.categories.CategoryRow(nl.eazyrecipes.data.CategoryEntity("c1", "Soep", "aqua", "bowl-steam", 5, 0, 0), 1)
+        nl.eazyrecipes.ui.categories.CategoriesContent(rows, {}, { _, _, _, _ -> }, {}, { _, _ -> })
+    }
+
+    @Test fun library_custom_category() {
+        val soep = nl.eazyrecipes.data.CategoryEntity("c1", "Soep", "aqua", "bowl-steam", 0, 0, 0)
+        val cats = nl.eazyrecipes.ui.theme.CategorySet(listOf(soep) + nl.eazyrecipes.data.DefaultCategories.entities())
+        val recipes = sample.map { if (it.title == "Linzensoep") it.copy(categoryId = "c1") else it }
+        shot("02f-library-custom-category") {
+            androidx.compose.runtime.CompositionLocalProvider(nl.eazyrecipes.ui.theme.LocalCategories provides cats) {
+                LibraryScreen(libraryState(recipes, LibraryFilter(category = "c1")), {}, {}, {})
+            }
         }
     }
 

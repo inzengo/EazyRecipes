@@ -3,6 +3,7 @@ package nl.eazyrecipes.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,11 +43,10 @@ import nl.eazyrecipes.R
 import nl.eazyrecipes.ui.components.Ico
 import nl.eazyrecipes.ui.components.StatusBarBackdrop
 import nl.eazyrecipes.ui.library.AddLinkSheet
-import nl.eazyrecipes.ui.library.Category
 import nl.eazyrecipes.ui.library.CollectionActions
 import nl.eazyrecipes.ui.library.LibraryScreen
 import nl.eazyrecipes.ui.library.LibraryViewModel
-import nl.eazyrecipes.ui.library.color
+import nl.eazyrecipes.ui.library.tileContext
 import nl.eazyrecipes.ui.theme.Eazy
 
 enum class HomeTab(val label: String, @DrawableRes val icon: Int) {
@@ -63,6 +63,7 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onImport: (String) -> Unit,
     pantry: @Composable () -> Unit,
+    onOpenCategories: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(HomeTab.LIBRARY) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
@@ -73,8 +74,8 @@ fun HomeScreen(
     BackHandler(enabled = tab != HomeTab.LIBRARY) { tab = HomeTab.LIBRARY }
 
     // De navigatie en +-knop kleuren mee met de gekozen categorie, zoals de kop.
-    val category = state?.filter?.category ?: Category.ALLES
-    val accent = if (tab == HomeTab.LIBRARY && category != Category.ALLES) category.color.vivid else Eazy.Brand
+    val tile = tileContext(state?.filter?.category)
+    val accent = if (tab == HomeTab.LIBRARY && tile != Eazy.Alles) tile.vivid else Eazy.Brand
 
     Box(Modifier.fillMaxSize().background(Eazy.Grey)) {
         when (tab) {
@@ -86,7 +87,7 @@ fun HomeScreen(
             )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
-            HomeTab.MORE -> MoreScreen()
+            HomeTab.MORE -> MoreScreen(onOpenCategories)
         }
         BottomNav(tab, accent, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -212,13 +213,14 @@ private fun SiteRow(letter: String, color: Color, name: String, note: String) {
 }
 
 @Composable
-private fun MoreScreen() {
+private fun MoreScreen(onOpenCategories: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("Meer", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(bottom = 12.dp))
+            MoreRow(R.drawable.ph_bowl_food, Color(0xFFFF8A3D), "Categorieën", "Namen, kleuren en iconen", onOpenCategories)
             MoreRow(R.drawable.ph_folder, Eazy.Snel.vivid, "Back-up maken en terugzetten", "Komt in fase 4")
             MoreRow(R.drawable.ph_share, Color(0xFF47E3BC), "Recepten delen", "Komt in fase 4")
             MoreRow(R.drawable.ph_chef_hat, Eazy.Brand, "Over EazyRecipes", "Versie ${BuildConfig.VERSION_NAME}")
@@ -228,9 +230,10 @@ private fun MoreScreen() {
 }
 
 @Composable
-private fun MoreRow(@DrawableRes icon: Int, color: Color, label: String, note: String) {
+private fun MoreRow(@DrawableRes icon: Int, color: Color, label: String, note: String, onClick: (() -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(22.dp)).background(Eazy.Paper).padding(start = 10.dp, end = 16.dp),
+        Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(22.dp)).background(Eazy.Paper)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(start = 10.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -241,5 +244,6 @@ private fun MoreRow(@DrawableRes icon: Int, color: Color, label: String, note: S
             Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp))
             Text(note, style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
         }
+        if (onClick != null) Ico(R.drawable.ic_chevron_right, 18.dp, tint = Eazy.Muted)
     }
 }

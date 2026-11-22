@@ -25,7 +25,7 @@ class LibraryViewModelTest {
     private lateinit var repo: RecipeRepository
 
     @Before fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).allowMainThreadQueries().build()
+        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).addCallback(nl.eazyrecipes.data.SeedCategories).allowMainThreadQueries().build()
         repo = RecipeRepository(db)
         runBlocking {
             repo.save(ParsedRecipe(title = "Kip kerrie", ingredients = listOf("200 gr kipfilet")))

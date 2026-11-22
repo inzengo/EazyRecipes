@@ -43,7 +43,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import nl.eazyrecipes.R
-import nl.eazyrecipes.data.MainIngredient
+import nl.eazyrecipes.data.CategoryEntity
 import nl.eazyrecipes.importer.ParsedRecipe
 import nl.eazyrecipes.importer.ParsedStep
 import nl.eazyrecipes.ui.components.BigPillButton
@@ -60,6 +60,8 @@ import nl.eazyrecipes.ui.siteLabel
 import nl.eazyrecipes.ui.theme.ContextColor
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
+import nl.eazyrecipes.ui.theme.LocalCategories
+import nl.eazyrecipes.ui.theme.accent
 
 /**
  * Bewerkbaar recept: gebruikt door het importscherm (voorbeeld vóór opslaan) en door "Bewerken" op het detailscherm.
@@ -80,7 +82,8 @@ fun RecipeEditor(
     banner: @Composable () -> Unit = {},
 ) {
     val d = draft
-    val ctx = d.mainIngredient.context
+    val categories = LocalCategories.current
+    val ctx = categories.context(d.categoryId)
     val scroll = rememberScrollState()
     var pickKind by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(Eazy.Paper)) {
@@ -100,7 +103,8 @@ fun RecipeEditor(
 
                 // Soort = een gok van de importer; één tik om te corrigeren, verder geen aandacht.
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Chip(ctx.label, ctx.icon, ctx.vivid, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down)
+                    if (ctx == Eazy.Alles) Chip("Kies soort", ctx.icon, Eazy.Grey, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down)
+                    else Chip(ctx.label, ctx.icon, ctx.vivid, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down)
                     siteLabel(d.sourceUrl)?.let { Chip(it, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted) }
                 }
 
@@ -167,7 +171,7 @@ fun RecipeEditor(
             BigPillButton(
                 text = if (saving) "Opslaan…" else saveLabel,
                 icon = R.drawable.ic_check,
-                accent = ctx.vivid.takeIf { d.mainIngredient != null } ?: Eazy.Brand,
+                accent = ctx.accent,
                 onClick = onSave,
                 enabled = canSave,
             )
@@ -178,8 +182,9 @@ fun RecipeEditor(
 
     if (pickKind) {
         KindSheet(
-            selected = d.mainIngredient,
-            onPick = { pick -> onEdit { it.copy(mainIngredient = pick) }; pickKind = false },
+            categories = categories.list,
+            selected = d.categoryId,
+            onPick = { pick -> onEdit { it.copy(categoryId = pick) }; pickKind = false },
             onDismiss = { pickKind = false },
         )
     }
@@ -189,25 +194,24 @@ private val PHOTO_HEIGHT = 300.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KindSheet(selected: MainIngredient?, onPick: (MainIngredient) -> Unit, onDismiss: () -> Unit) {
+private fun KindSheet(categories: List<CategoryEntity>, selected: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding()) {
             Text("Soort recept", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Bepaalt de kleur en straks het filter in je bibliotheek.",
+                "Bepaalt de kleur en de tegel in je bibliotheek. Eigen soorten maak je onder Meer → Categorieën.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Eazy.Muted,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
-            MainIngredient.entries.forEach { m ->
-                val c = m.context
+            (categories.map { it.id to it.context } + (null to Eazy.Alles.copy(label = "Geen soort"))).forEach { (m, c) ->
                 Surface(onClick = { onPick(m) }, color = Color.Transparent, shape = MaterialTheme.shapes.medium) {
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Box(Modifier.size(44.dp).clip(CircleShape).background(c.vivid), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(if (m == null) Eazy.Grey else c.vivid), contentAlignment = Alignment.Center) {
                             Ico(c.icon, 22.dp, tint = Eazy.Ink)
                         }
                         Text(c.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))

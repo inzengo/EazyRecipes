@@ -12,7 +12,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import nl.eazyrecipes.data.EazyDatabase
-import nl.eazyrecipes.data.MainIngredient
 import nl.eazyrecipes.data.RecipeRepository
 import nl.eazyrecipes.importer.FetchResult
 import nl.eazyrecipes.importer.ImageStore
@@ -89,7 +88,7 @@ class ImportViewModelTest {
 
     @Before fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java)
+        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), EazyDatabase::class.java).addCallback(nl.eazyrecipes.data.SeedCategories)
             .allowMainThreadQueries().build()
         repo = RecipeRepository(db)
     }
@@ -114,13 +113,13 @@ class ImportViewModelTest {
         assertEquals("Kip kerrie: romig en vers gemaakt", editing.draft.title)
         assertNull(editing.duplicateOf)
 
-        vm.edit { it.copy(title = "Kip kerrie van mama", mainIngredient = MainIngredient.VIS, ingredients = it.ingredients + "  ") }
+        vm.edit { it.copy(title = "Kip kerrie van mama", categoryId = "vis", ingredients = it.ingredients + "  ") }
         vm.save()
 
         val id = vm.await<ImportUiState.Saved>().id
         val saved = repo.get(id)!!
         assertEquals("Kip kerrie van mama", saved.recipe.title)
-        assertEquals(MainIngredient.VIS, saved.recipe.mainIngredient)
+        assertEquals("vis", saved.recipe.categoryId)
         assertEquals("lege regel niet opgeslagen", 13, saved.ingredients.size)
         assertEquals(3, saved.steps.size)
         assertNull("foto-download mislukt → alleen bron-URL", saved.recipe.imagePath)

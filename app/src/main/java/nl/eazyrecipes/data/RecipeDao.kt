@@ -61,6 +61,37 @@ interface RecipeDao {
     @Query("UPDATE recipe SET imagePath = :imagePath, updatedAt = :now WHERE id = :id")
     suspend fun setImagePath(id: String, imagePath: String?, now: Long)
 
+    // --- categorieën ---
+
+    @Query("SELECT * FROM category WHERE deletedAt IS NULL ORDER BY position, createdAt")
+    fun observeCategories(): Flow<List<CategoryEntity>>
+
+    @Query("SELECT * FROM category WHERE deletedAt IS NULL ORDER BY position, createdAt")
+    suspend fun categories(): List<CategoryEntity>
+
+    @Query("SELECT * FROM category WHERE id = :id AND deletedAt IS NULL")
+    suspend fun category(id: String): CategoryEntity?
+
+    /** Ook verwijderde: om een standaardcategorie terug te zetten. */
+    @Query("SELECT * FROM category WHERE id = :id")
+    suspend fun categoryIncludingDeleted(id: String): CategoryEntity?
+
+    @Insert
+    suspend fun insertCategory(c: CategoryEntity)
+
+    @Update
+    suspend fun updateCategory(c: CategoryEntity)
+
+    @Query("UPDATE category SET position = :position, updatedAt = :now WHERE id = :id")
+    suspend fun setCategoryPosition(id: String, position: Int, now: Long)
+
+    @Query("UPDATE category SET deletedAt = :now, updatedAt = :now WHERE id = :id")
+    suspend fun softDeleteCategory(id: String, now: Long)
+
+    /** Recepten van een verwijderde categorie worden "zonder soort" (hun updatedAt verandert mee, voor sync). */
+    @Query("UPDATE recipe SET categoryId = NULL, updatedAt = :now WHERE categoryId = :id")
+    suspend fun clearCategory(id: String, now: Long)
+
     // --- collecties ---
 
     @Insert

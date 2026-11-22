@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.eazyrecipes.data.CollectionSummary
-import nl.eazyrecipes.data.MainIngredient
 import nl.eazyrecipes.data.RecipeEntity
 import nl.eazyrecipes.data.RecipeRepository
 import nl.eazyrecipes.ui.theme.isQuick
@@ -27,17 +26,17 @@ import java.text.Collator
 import java.time.LocalDate
 import java.util.Locale
 
-/** De categorie-tegels: "Alles", de vijf soorten, en "Snel" (≤ 30 min, los van de soort). */
-enum class Category(val main: MainIngredient? = null) {
-    ALLES, VLEES(MainIngredient.VLEES), VIS(MainIngredient.VIS), VEGA(MainIngredient.VEGA),
-    VEGAN(MainIngredient.VEGAN), ZOET(MainIngredient.ZOET), SNEL;
+/**
+ * De categorie-tegels: "Alles" (`null`), de categorieën van de gebruiker (hun id) en "Snel" ([QUICK]: ≤ 30 min,
+ * los van de soort). [QUICK] botst niet met een categorie: standaardcategorieën hebben vaste namen zonder "snel",
+ * eigen categorieën een UUID.
+ */
+const val QUICK = "snel"
 
-    fun matches(r: RecipeEntity): Boolean = when (this) {
-        ALLES -> true
-        SNEL -> isQuick(r.totalMinutes)
-        VEGA -> r.mainIngredient == MainIngredient.VEGA || r.mainIngredient == MainIngredient.VEGAN // vegan is ook vega
-        else -> r.mainIngredient == main
-    }
+fun categoryMatches(category: String?, r: RecipeEntity): Boolean = when (category) {
+    null -> true
+    QUICK -> isQuick(r.totalMinutes)
+    else -> r.categoryId == category
 }
 
 enum class LibraryTab { RECIPES, FAVORITES, COLLECTIONS }
@@ -46,7 +45,8 @@ enum class SortOrder(val label: String) { RECENT("Nieuwste"), QUICK("Snelste eer
 
 data class LibraryFilter(
     val query: String = "",
-    val category: Category = Category.ALLES,
+    /** `null` = alles, [QUICK], of een categorie-id. */
+    val category: String? = null,
     val tab: LibraryTab = LibraryTab.RECIPES,
     /** Alleen recepten met een bekende tijd ≤ dit aantal minuten. */
     val maxMinutes: Int? = null,
@@ -59,7 +59,7 @@ data class LibraryFilter(
     val sheetCount: Int get() = (if (maxMinutes != null) 1 else 0) + (if (sources.isNotEmpty()) 1 else 0) + (if (sort != SortOrder.RECENT) 1 else 0)
 
     /** Niets gekozen: dan tonen we een uitgelicht recept. */
-    val isPlain: Boolean get() = query.isBlank() && category == Category.ALLES && tab == LibraryTab.RECIPES && sheetCount == 0 && collectionId == null
+    val isPlain: Boolean get() = query.isBlank() && category == null && tab == LibraryTab.RECIPES && sheetCount == 0 && collectionId == null
 }
 
 data class LibraryUiState(
@@ -88,7 +88,7 @@ fun applyFilter(all: List<RecipeEntity>, ftsIds: Set<String>?, f: LibraryFilter,
     val filtered = all.filter { r ->
         (inCollection == null || r.id in inCollection) &&
         (f.tab != LibraryTab.FAVORITES || r.favorite) &&
-            f.category.matches(r) &&
+            categoryMatches(f.category, r) &&
             (ftsIds == null || r.id in ftsIds) &&
             (f.maxMinutes == null || (r.totalMinutes != null && r.totalMinutes <= f.maxMinutes)) &&
             (f.sources.isEmpty() || r.sourceSite in f.sources)
@@ -132,8 +132,11 @@ class LibraryViewModel(
         .mapLatest { q -> if (q.isBlank()) null else repository.search(q).map { it.id }.toSet() }
 
     private val collections = repository.observeCollections()
+    private val categories = repository.observeCategories()
 
-    val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds, collections) { all, f, ids, cols ->
+    val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds, collections, categories) { all, raw, ids, cols, cats ->
+        // Een net verwijderde categorie als filter: dan gewoon alles tonen.
+        val f = if (raw.category == null || raw.category == QUICK || cats.any { it.id == raw.category }) raw else raw.copy(category = null)
         val featured = featuredFor(all, f, today())
         // Een collectie die net verwijderd is, toont niets; de UI wist dan het filter.
         val inCollection = f.collectionId?.let { id -> cols.firstOrNull { it.id == id }?.recipes?.map { it.id }?.toSet() ?: emptySet() }

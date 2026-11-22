@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
+import nl.eazyrecipes.data.DefaultCategories
 
 /**
  * Haalt een schema.org `Recipe` uit de JSON-LD van een HTML-pagina.
@@ -87,11 +88,13 @@ object JsonLdRecipeParser {
             totalMinutes = total,
             category = category,
             cuisine = cuisine,
-            mainIngredient = MainIngredientGuesser.guess(
-                category = category,
-                diets = r["suitableForDiet"].strings(),
-                keywords = keywords,
-                ingredients = ingredients,
+            categoryId = DefaultCategories.idFor(
+                MainIngredientGuesser.guess(
+                    category = category,
+                    diets = r["suitableForDiet"].strings(),
+                    keywords = keywords,
+                    ingredients = ingredients,
+                )
             ),
             tags = tags,
             ingredients = ingredients,

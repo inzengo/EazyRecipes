@@ -1,7 +1,5 @@
 package nl.eazyrecipes.importer
 
-import nl.eazyrecipes.data.MainIngredient
-
 /**
  * Een recept zoals het uit een bron komt, vóór het opslaan.
  * Het voorbeeldscherm toont dit en laat alles bewerken; daarna maakt de repository er rijen van.
@@ -20,7 +18,8 @@ data class ParsedRecipe(
     val totalMinutes: Int? = null,
     val category: String? = null,
     val cuisine: String? = null,
-    val mainIngredient: MainIngredient? = null,
+    /** Soort recept (id van een categorie); bij import de gok van [MainIngredientGuesser] als standaardcategorie. */
+    val categoryId: String? = null,
     val tags: List<String> = emptyList(),
     val ingredients: List<String> = emptyList(),
     val steps: List<ParsedStep> = emptyList(),

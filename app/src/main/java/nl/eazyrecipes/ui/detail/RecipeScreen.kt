@@ -52,6 +52,7 @@ import nl.eazyrecipes.ui.components.TopRounded
 import nl.eazyrecipes.ui.formatMinutes
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
+import nl.eazyrecipes.ui.theme.accent
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -272,7 +273,7 @@ private val PHOTO_HEIGHT = 320.dp
 @Composable
 private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit, onCook: () -> Unit) {
     val r = d.recipe
-    val ctx = r.mainIngredient.context
+    val ctx = r.context
     val context = LocalContext.current
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var pickCollections by rememberSaveable { mutableStateOf(false) }
@@ -322,7 +323,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Chip(ctx.label, ctx.icon, ctx.vivid)
+                    if (ctx != Eazy.Alles) Chip(ctx.label, ctx.icon, ctx.vivid)
                     r.sourceSite?.let { site ->
                         Chip(site, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted, onClick = {
                             r.sourceUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
@@ -394,7 +395,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
         PhotoStatusBar(scroll, PHOTO_HEIGHT)
         if (d.steps.isNotEmpty()) {
             BigPillButton(
-                "Start kookmodus", R.drawable.ph_play, if (r.mainIngredient == null) Eazy.Brand else ctx.vivid, onCook,
+                "Start kookmodus", R.drawable.ph_play, ctx.accent, onCook,
                 Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                     .shadow(18.dp, CircleShape, spotColor = Eazy.Ink.copy(alpha = 0.4f)),
             )

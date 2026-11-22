@@ -45,7 +45,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.eazyrecipes.R
-import nl.eazyrecipes.data.MainIngredient
 import nl.eazyrecipes.importer.ParsedStep
 import nl.eazyrecipes.ui.editor.RecipeEditor
 import nl.eazyrecipes.ui.components.Chip
@@ -61,7 +60,6 @@ import nl.eazyrecipes.ui.components.TopRounded
 import nl.eazyrecipes.ui.siteLabel
 import nl.eazyrecipes.ui.theme.ContextColor
 import nl.eazyrecipes.ui.theme.Eazy
-import nl.eazyrecipes.ui.theme.context
 
 @Composable
 fun ImportScreen(
