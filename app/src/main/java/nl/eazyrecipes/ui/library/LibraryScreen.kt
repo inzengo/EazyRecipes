@@ -24,10 +24,12 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -48,6 +51,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
@@ -109,12 +113,21 @@ fun LibraryScreen(
     onToggleFavorite: (RecipeEntity) -> Unit,
     onOpen: (String) -> Unit,
     collectionActions: CollectionActions = CollectionActions(),
+    /** Tekst in het zoekveld; komt direct uit de ViewModel, niet via [state] (zie LibraryViewModel.query). */
+    query: String = state?.filter?.query.orEmpty(),
+    onQuery: (String) -> Unit = { q -> onFilter { it.copy(query = q) } },
 ) {
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
     val f = state?.filter ?: LibraryFilter()
+    val focus = LocalFocusManager.current
+    val grid = rememberLazyStaggeredGridState()
+    // Scrollen sluit het toetsenbord: het zoekveld scrolt mee en zou anders onzichtbaar de focus houden.
+    LaunchedEffect(grid.isScrollInProgress) { if (grid.isScrollInProgress) focus.clearFocus() }
+    val open: (String) -> Unit = { id -> focus.clearFocus(); onOpen(id) }
 
     Box(Modifier.fillMaxSize().background(Eazy.Grey)) {
         LazyVerticalStaggeredGrid(
+            state = grid,
             columns = StaggeredGridCells.Fixed(2),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 130.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -122,7 +135,7 @@ fun LibraryScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             item(span = StaggeredGridItemSpan.FullLine, key = "hero") {
-                Hero(state, f, onQuery = { q -> onFilter { it.copy(query = q) } }, onOpenFilters = { filtersOpen = true })
+                Hero(state, f, query, onQuery, onSearch = { focus.clearFocus() }, onOpenFilters = { focus.clearFocus(); filtersOpen = true })
             }
             item(span = StaggeredGridItemSpan.FullLine, key = "tiles") {
                 CategoryTiles(f.category) { c ->
@@ -151,10 +164,10 @@ fun LibraryScreen(
                 }
                 else -> {
                     state.featured?.let { r ->
-                        item(span = StaggeredGridItemSpan.FullLine, key = "featured") { Featured(r) { onOpen(r.id) } }
+                        item(span = StaggeredGridItemSpan.FullLine, key = "featured") { Featured(r) { open(r.id) } }
                     }
                     itemsIndexed(state.shown, key = { _, r -> r.id }) { i, r ->
-                        RecipeCard(r, cardHeight(i), onClick = { onOpen(r.id) }, onFavorite = { onToggleFavorite(r) })
+                        RecipeCard(r, cardHeight(i), onClick = { open(r.id) }, onFavorite = { onToggleFavorite(r) })
                     }
                 }
             }
@@ -168,7 +181,7 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun Hero(state: LibraryUiState?, f: LibraryFilter, onQuery: (String) -> Unit, onOpenFilters: () -> Unit) {
+private fun Hero(state: LibraryUiState?, f: LibraryFilter, query: String, onQuery: (String) -> Unit, onSearch: () -> Unit, onOpenFilters: () -> Unit) {
     val c = f.category.color
     val plainAlles = f.category == Category.ALLES
     val collection = state?.openCollection
@@ -215,7 +228,7 @@ private fun Hero(state: LibraryUiState?, f: LibraryFilter, onQuery: (String) -> 
                 Text(sub, style = MaterialTheme.typography.labelLarge, color = Eazy.Ink.copy(alpha = 0.78f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SearchField(f.query, onQuery, Modifier.weight(1f))
+                SearchField(query, onQuery, onSearch, Modifier.weight(1f))
                 FilterButton(f.sheetCount, onOpenFilters)
             }
         }
@@ -223,7 +236,7 @@ private fun Hero(state: LibraryUiState?, f: LibraryFilter, onQuery: (String) -> 
 }
 
 @Composable
-private fun SearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier) {
+private fun SearchField(query: String, onQuery: (String) -> Unit, onSearch: () -> Unit, modifier: Modifier) {
     Row(
         // Rand naast de schaduw: op de witte "Alles"-kop zou het veld anders wegvallen.
         modifier.height(52.dp).shadow(6.dp, CircleShape, spotColor = Eazy.Ink.copy(alpha = 0.25f))
@@ -240,6 +253,7 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, modifier: Modi
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = Eazy.Ink),
             cursorBrush = SolidColor(Eazy.Ink),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             modifier = Modifier.weight(1f),
             decorationBox = { inner ->
                 Box {
@@ -338,6 +352,7 @@ private fun Tabs(selected: LibraryTab, onPick: (LibraryTab) -> Unit) {
 private fun ActiveChips(f: LibraryFilter, collectionName: String?, onFilter: ((LibraryFilter) -> LibraryFilter) -> Unit) {
     val chips = buildList {
         collectionName?.let { add(it to { onFilter { f -> f.copy(collectionId = null) } }) }
+        if (f.category != Category.ALLES) add(f.category.color.label to { onFilter { it.copy(category = Category.ALLES) } })
         f.maxMinutes?.let { m -> add("≤ ${formatMinutes(m)}" to { onFilter { it.copy(maxMinutes = null) } }) }
         f.sources.forEach { s -> add(s to { onFilter { it.copy(sources = it.sources - s) } }) }
         if (f.sort != SortOrder.RECENT) add(f.sort.label to { onFilter { it.copy(sort = SortOrder.RECENT) } })
@@ -471,7 +486,8 @@ private fun FilterSheet(state: LibraryUiState, onFilter: ((LibraryFilter) -> Lib
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Filters", style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp), modifier = Modifier.weight(1f))
-                TextButton(onClick = { onFilter { it.copy(maxMinutes = null, sources = emptySet(), sort = SortOrder.RECENT) } }) {
+                // Alles = ook categorie en zoekwoord; tab en open collectie blijven staan (dat is "waar je bent", geen filter).
+                TextButton(onClick = { onFilter { LibraryFilter(tab = it.tab, collectionId = it.collectionId) } }) {
                     Text("Wis alles", style = MaterialTheme.typography.labelLarge.copy(textDecoration = TextDecoration.Underline), color = Eazy.Ink)
                 }
             }
@@ -479,6 +495,14 @@ private fun FilterSheet(state: LibraryUiState, onFilter: ((LibraryFilter) -> Lib
                 listOf(null to "Alles", 20 to "≤ 20 min", 30 to "≤ 30 min", 60 to "≤ 1 uur").forEach { (m, label) ->
                     Pill(label, f.maxMinutes == m) { onFilter { it.copy(maxMinutes = m) } }
                 }
+            }
+            if (f.maxMinutes != null && state.unknownTimeCount > 0) {
+                Text(
+                    "${recipes(state.unknownTimeCount)} zonder bekende tijd ${if (state.unknownTimeCount == 1) "valt" else "vallen"} hierdoor weg.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Eazy.Muted,
+                    modifier = Modifier.offset(y = (-8).dp),
+                )
             }
             if (state.availableSources.isNotEmpty()) Group("Bron") {
                 state.availableSources.forEach { src ->

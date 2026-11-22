@@ -116,18 +116,60 @@ Alle tabellen: `id` (UUID), `createdAt`, `updatedAt`, `deletedAt?`.
 - [x] Kleursysteem, typografie, iconen, navigatie
 - [x] Favorieten als tab, collecties in de bibliotheek, filter-sheet, "snel"-label op kaarten
 
-### Fase 2 — Data + import (volgende)
+### Fase 2 — Data + import ✅
 - Datamodel + Room, JSON-LD parser met tests op opgeslagen echte pagina's, WebView-fallback
 - Delen-menu, link plakken, voorbeeldscherm
 - Compose-thema volgens design v0.2 (fonts, kleuren, Phosphor-iconen)
 - **Eerste test op de telefoon**
 
-### Fase 3 — Bibliotheek & vinden
+### Fase 3 — Bibliotheek & vinden ✅
 - Bibliotheek (tabs Recepten/Favorieten/Collecties), zoeken, filter-sheet, categorie-tegels
 - Collecties maken en beheren, "In huis"
 
-### Fase 4 — Koken & delen A
-- Detail, porties, notities, kookmodus met timers; delen als tekst/`.eazy`-bestand; back-up
+### Fase 4 — Koken, ordenen & delen A
+Volgorde bewust: eerst de bugs, dan koken, dan het datamodel uitbreiden (categorieën/labels), en pas daarna delen,
+zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we het formaat niet hoeven te veranderen.
+
+**4a — Zoeken & filters repareren** (gemeld bij testen, 2026-11-22)
+- *Letters verdwijnen / cursor springt:* het zoekveld toont `filter.query` uit de ViewModel-state. Die komt pas terug
+  nadat ook de FTS-zoekopdracht klaar is (`combine` + `mapLatest` + `stateIn`), dus een volgende toetsaanslag bouwt op
+  een verouderde waarde. Oplossing: het veld houdt zijn eigen tekst (lokale state), de ViewModel krijgt de query
+  apart en zoekt met een korte debounce.
+- *Toetsenbord:* de zoektoets doet niets, het toetsenbord gaat niet weg bij scrollen of bij het openen van een recept.
+  Het zoekveld zit in het scrollende raster; scrol je het weg, dan verliest het de focus.
+- *Filter-sheet:* "Wis alles" wist categorie en zoekwoord niet. Een tijdfilter verbergt recepten zonder tijd zonder dat
+  je dat ziet. Categorie en zoekwoord ontbreken als chips onder de tabs.
+- Tests: ViewModel-test voor snel typen, screenshot van de sheet.
+
+**4b — Detail: porties & notities**
+- Hoeveelheden herkennen vooraan de ingrediëntregel (`200 gr`, `½`, `1-2`, `1,5`) en omrekenen met de porties-stepper
+  ("2 ½ el" netjes afronden). Regels zonder hoeveelheid blijven zoals ze zijn.
+- Eigen notitie per recept (veld bestaat al: `RecipeEntity.notes`).
+- Ingrediënten afvinken (alleen voor deze kooksessie).
+
+**4c — Kookmodus**
+- Volledig scherm in de receptkleur, één stap tegelijk, groot stapnummer, swipen. Het scherm blijft aan.
+- Tijd in een stap ("10 minuten", "1 uur", "5-7 min") → timerknop; timers lopen door met een melding (foreground notification).
+- Ingrediënten van de stap onderin, uitklapbaar.
+
+**4d — Eigen categorieën & labels** (wens 2026-11-22)
+- **Categorieën bewerkbaar:** de vaste `MainIngredient`-enum wordt een tabel `category` (naam, kleur, icoon, volgorde).
+  De vijf huidige worden de standaard en blijven werken (migratie Room v1 → v2). Je kunt ze hernoemen, verwijderen,
+  van kleur/icoon wisselen en nieuwe toevoegen (bv. "Soep", "Ontbijt").
+  "Snel" blijft automatisch (≤ 30 min) en is geen categorie.
+- **Kleuren uit een vaste palet** (± 12 felle kleuren die allemaal ≥ 6:1 contrast hebben met zwarte tekst), geen vrije
+  kleurkiezer. Zo blijft het design-systeem kloppen (zwarte tekst op fel vlak). De donkere variant (`deep`) wordt per
+  paletkleur meegeleverd.
+- **Iconen uit een vaste set** Phosphor-iconen (± 24, eten-gerelateerd).
+- **Labels:** de geïmporteerde tags van sites ("Hoofdgerecht", "Makkelijk") worden eigen labels: hernoemen,
+  samenvoegen, verbergen, kleur geven. Filteren op label in de bibliotheek; labels zichtbaar op het detailscherm.
+- De gok bij import (`MainIngredientGuesser`) kiest uit de standaardcategorieën; bestaat die niet meer, dan geen categorie.
+- Beheerscherm onder "Meer".
+
+**4e — Delen A & back-up**
+- Recept delen als nette tekst + bronlink.
+- Recept of collectie als `.eazy`-bestand (JSON met versienummer, foto's erin) en dat bestand weer openen in de app.
+- Volledige back-up exporteren/terugzetten (zelfde formaat, alle recepten + categorieën + labels + collecties).
 
 ### Fase 5 — Overige import
 - Bladwijzers-bestand, OCR, handmatig invoeren, dubbele recepten

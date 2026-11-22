@@ -1,12 +1,17 @@
 package nl.eazyrecipes.ui.library
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -66,6 +71,8 @@ data class LibraryUiState(
     /** Links die al in de bibliotheek staan (voor "link plakken"). */
     val savedUrls: Set<String> = emptySet(),
     val collections: List<CollectionSummary> = emptyList(),
+    /** Recepten zonder bekende tijd: die vallen weg bij een tijdfilter (dat melden we in de sheet). */
+    val unknownTimeCount: Int = 0,
 ) {
     /** De collectie die nu open staat (of `null`). */
     val openCollection: CollectionSummary? get() = filter.collectionId?.let { id -> collections.firstOrNull { it.id == id } }
@@ -100,7 +107,7 @@ fun featuredFor(all: List<RecipeEntity>, f: LibraryFilter, epochDay: Long): Reci
     return stable[Math.floorMod(epochDay, stable.size.toLong()).toInt()]
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class LibraryViewModel(
     private val repository: RecipeRepository,
     private val today: () -> Long = { LocalDate.now().toEpochDay() },
@@ -109,8 +116,19 @@ class LibraryViewModel(
     private val filter = MutableStateFlow(LibraryFilter())
     private val library = repository.observeLibrary()
 
-    /** Zoeken via de FTS-index; opnieuw als de query of de bibliotheek verandert. */
-    private val ftsIds = combine(filter.map { it.query.trim() }.distinctUntilChanged(), library) { q, _ -> q }
+    /**
+     * De tekst in het zoekveld, als Compose-state: synchroon, zonder een frame vertraging. Het veld leest hieruit en
+     * níet uit [state]; die komt pas terug na de zoekopdracht, en dan bouwt een volgende letter voort op een oude waarde
+     * (letters verdwijnen, de cursor springt).
+     */
+    var query by mutableStateOf("")
+        private set
+
+    /** Zoeken via de FTS-index; opnieuw als de query (na een korte pauze in het typen) of de bibliotheek verandert. */
+    private val ftsIds = combine(
+        filter.map { it.query.trim() }.distinctUntilChanged().debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS },
+        library,
+    ) { q, _ -> q }
         .mapLatest { q -> if (q.isBlank()) null else repository.search(q).map { it.id }.toSet() }
 
     private val collections = repository.observeCollections()
@@ -127,10 +145,19 @@ class LibraryViewModel(
             availableSources = all.mapNotNull { it.sourceSite }.distinct().sortedWith(dutch),
             savedUrls = all.mapNotNull { it.sourceUrl }.toSet(),
             collections = cols,
+            unknownTimeCount = all.count { it.totalMinutes == null },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun update(transform: (LibraryFilter) -> LibraryFilter) = filter.update(transform)
+    fun update(transform: (LibraryFilter) -> LibraryFilter) {
+        filter.update(transform)
+        query = filter.value.query
+    }
+
+    fun onQueryChange(q: String) {
+        query = q
+        filter.update { it.copy(query = q) }
+    }
 
     fun openCollection(id: String) = filter.update { it.copy(collectionId = id, tab = LibraryTab.RECIPES) }
 
@@ -153,3 +180,5 @@ class LibraryViewModel(
         viewModelScope.launch { repository.setFavorite(r.id, !r.favorite) }
     }
 }
+
+private const val SEARCH_DEBOUNCE_MS = 150L

@@ -81,6 +81,8 @@ fun HomeScreen(
             HomeTab.LIBRARY -> LibraryScreen(
                 state, library::update, library::toggleFavorite, onOpen,
                 CollectionActions(library::openCollection, library::createCollection, library::renameCollection, library::deleteCollection),
+                query = library.query,
+                onQuery = library::onQueryChange,
             )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
