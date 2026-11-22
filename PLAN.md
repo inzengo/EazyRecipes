@@ -126,7 +126,7 @@ Alle tabellen: `id` (UUID), `createdAt`, `updatedAt`, `deletedAt?`.
 - Bibliotheek (tabs Recepten/Favorieten/Collecties), zoeken, filter-sheet, categorie-tegels
 - Collecties maken en beheren, "In huis"
 
-### Fase 4 — Koken, ordenen & delen A
+### Fase 4 — Koken, ordenen & delen A ✅
 Volgorde bewust: eerst de bugs, dan koken, dan het datamodel uitbreiden (categorieën/labels), en pas daarna delen,
 zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we het formaat niet hoeven te veranderen.
 

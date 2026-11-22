@@ -3,6 +3,15 @@ package nl.eazyrecipes.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import nl.eazyrecipes.container
+import nl.eazyrecipes.share.Sharing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,7 +74,10 @@ fun HomeScreen(
     pantry: @Composable () -> Unit,
     onOpenCategories: () -> Unit = {},
     onOpenLabels: () -> Unit = {},
+    onOpenFile: (android.net.Uri) -> Unit = {},
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var tab by rememberSaveable { mutableStateOf(HomeTab.LIBRARY) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
     // Wat er in "link plakken" stond toen het venster (per ongeluk) dicht ging; leeg na een import.
@@ -82,13 +94,19 @@ fun HomeScreen(
         when (tab) {
             HomeTab.LIBRARY -> LibraryScreen(
                 state, library::update, library::toggleFavorite, onOpen,
-                CollectionActions(library::openCollection, library::createCollection, library::renameCollection, library::deleteCollection),
+                CollectionActions(
+                    library::openCollection, library::createCollection, library::renameCollection, library::deleteCollection,
+                    share = { id ->
+                        val name = state?.collections?.firstOrNull { it.id == id }?.name ?: "Collectie"
+                        scope.launch { Sharing.shareFile(context, name) { out -> context.container.bundles.writeCollection(id, out) } }
+                    },
+                ),
                 query = library.query,
                 onQuery = library::onQueryChange,
             )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
-            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels)
+            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels, onOpenFile)
         }
         BottomNav(tab, accent, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -214,7 +232,36 @@ private fun SiteRow(letter: String, color: Color, name: String, note: String) {
 }
 
 @Composable
-private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit) {
+private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, onOpenFile: (android.net.Uri) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    // Back-up: jij kiest waar het bestand komt (Downloads, Google Drive, …).
+    val createBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        busy = true
+        val app = context.applicationContext
+        // In de app-scope: wissel je van tab, dan loopt de back-up gewoon door.
+        context.container.appScope.launch {
+            val ok = try {
+                withContext(Dispatchers.IO) {
+                    app.contentResolver.openOutputStream(uri)?.use { app.container.bundles.writeBackup(it) } ?: throw java.io.IOException("Kan het bestand niet schrijven.")
+                }
+                true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Geen half bestand laten staan dat op een goede back-up lijkt.
+                runCatching { android.provider.DocumentsContract.deleteDocument(app.contentResolver, uri) }
+                false
+            }
+            withContext(Dispatchers.Main) {
+                busy = false
+                Toast.makeText(app, if (ok) "Back-up gemaakt" else "Back-up maken is mislukt", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenFile) }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 120.dp),
@@ -223,8 +270,12 @@ private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit) {
             Text("Meer", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(bottom = 12.dp))
             MoreRow(R.drawable.ph_bowl_food, Color(0xFFFF8A3D), "Categorieën", "Namen, kleuren en iconen", onOpenCategories)
             MoreRow(R.drawable.ph_tag, Color(0xFF3FD0F0), "Labels", "Kleuren, samenvoegen, verbergen", onOpenLabels)
-            MoreRow(R.drawable.ph_folder, Eazy.Snel.vivid, "Back-up maken en terugzetten", "Komt in fase 4")
-            MoreRow(R.drawable.ph_share, Color(0xFF47E3BC), "Recepten delen", "Komt in fase 4")
+            MoreRow(R.drawable.ph_folder, Eazy.Snel.vivid, "Back-up maken", if (busy) "Bezig…" else "Alle recepten, foto's, categorieën en labels in één bestand") {
+                if (!busy) createBackup.launch(Sharing.backupName())
+            }
+            MoreRow(R.drawable.ph_share, Color(0xFF47E3BC), "Bestand openen", "Een back-up terugzetten of een gedeeld .eazy-bestand") {
+                openFile.launch(arrayOf("*/*"))
+            }
             MoreRow(R.drawable.ph_chef_hat, Eazy.Brand, "Over EazyRecipes", "Versie ${BuildConfig.VERSION_NAME}")
         }
         StatusBarBackdrop(Eazy.Grey)

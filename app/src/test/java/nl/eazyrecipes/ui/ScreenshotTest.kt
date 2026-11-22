@@ -242,6 +242,15 @@ class ScreenshotTest {
         )
     }
 
+    @Test fun open_eazy_file() = shot("12-open-eazy") {
+        val recipes = listOf("Paella", "Shakshuka met feta", "Linzensoep", "Appelkruimeltaart").map { nl.eazyrecipes.share.EazyFile.Recipe(it, it) }
+        val bundle = nl.eazyrecipes.share.EazyFile.Bundle(
+            nl.eazyrecipes.share.EazyFile.Kind.COLLECTION, 0, recipes,
+            collections = listOf(nl.eazyrecipes.share.EazyFile.Collection("c", "Spaanse avond", recipes.map { it.id })),
+        )
+        nl.eazyrecipes.share.BundleImportContent(nl.eazyrecipes.share.BundleState.Preview(bundle, setOf("Linzensoep")), {}, {})
+    }
+
     @Test fun import_loading() = shot("03-import-loading") {
         // Nooit klaar, zodat de laad-toestand blijft staan.
         val vm = ImportViewModel(url, RecipeImporter({ kotlinx.coroutines.awaitCancellation() }, null), repo, ImageStore(tmp.newFolder(), noNetwork))

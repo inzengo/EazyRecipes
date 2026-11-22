@@ -68,6 +68,10 @@ import kotlinx.coroutines.flow.map
 import nl.eazyrecipes.data.LabelSummary
 import nl.eazyrecipes.data.TagEntity
 import nl.eazyrecipes.ui.components.LabelChip
+import androidx.compose.runtime.rememberCoroutineScope
+import nl.eazyrecipes.container
+import nl.eazyrecipes.share.RecipeText
+import nl.eazyrecipes.share.Sharing
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.imePadding
@@ -303,6 +307,8 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
     var pickCollections by rememberSaveable { mutableStateOf(false) }
     var coverOptions by rememberSaveable { mutableStateOf(false) }
     var pickLabels by rememberSaveable { mutableStateOf(false) }
+    var shareOptions by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let { vm.setCover(context.contentResolver, it) }
     }
@@ -324,6 +330,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                 ) {
                     RoundButton(R.drawable.ic_back, "Terug", onBack)
                     Box(Modifier.weight(1f))
+                    RoundButton(R.drawable.ph_share, "Delen", { shareOptions = true })
                     RoundButton(R.drawable.ph_folder, "In collectie zetten", { pickCollections = true })
                     RoundButton(R.drawable.ph_pencil, "Bewerken", onEdit)
                     RoundButton(
@@ -352,7 +359,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                     d.categoryIds.map(cats::context).filter { it != Eazy.Alles }.forEach { c -> Chip(c.label, c.icon, c.vivid) }
                     r.sourceSite?.let { site ->
                         Chip(site, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted, onClick = {
-                            r.sourceUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
+                            r.sourceUrl?.let { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) } }
                         })
                     }
                 }
@@ -429,6 +436,20 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
     val all by vm.allLabels.collectAsStateWithLifecycle()
     if (pickLabels) {
         LabelsSheet(all, d.labels.map { it.id }.toSet(), vm::setLabel, vm::addLabel, onDismiss = { pickLabels = false })
+    }
+
+    if (shareOptions) {
+        ShareSheet(
+            onText = {
+                shareOptions = false
+                Sharing.shareText(context, r.title, RecipeText.format(d, vm.servings ?: r.servings, vm.factor))
+            },
+            onFile = {
+                shareOptions = false
+                scope.launch { Sharing.shareFile(context, r.title) { out -> context.container.bundles.writeRecipe(r.id, out) } }
+            },
+            onDismiss = { shareOptions = false },
+        )
     }
 
     if (coverOptions) {
@@ -695,6 +716,21 @@ private fun LabelsSheet(
                 RoundButton(R.drawable.ic_plus, "Label toevoegen", { onCreate(name); name = "" }, background = Eazy.Ink, contentColor = Eazy.Paper)
             }
             Text("Kleuren, namen en samenvoegen regel je onder Meer → Labels.", style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShareSheet(onText: () -> Unit, onFile: () -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
+        Column(
+            Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Recept delen", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 8.dp))
+            SheetOption(R.drawable.ph_share, "Als tekst", "Voor WhatsApp of mail, met de porties zoals nu gekozen", onText)
+            SheetOption(R.drawable.ph_folder, "Als bestand (.eazy)", "Met foto; de ontvanger opent het in EazyRecipes", onFile)
         }
     }
 }

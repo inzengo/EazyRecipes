@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Alleen de map met .eazy-bestanden die we via het deelmenu versturen. -->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>

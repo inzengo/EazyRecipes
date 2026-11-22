@@ -28,10 +28,21 @@ class RecipeRepository(
 
     suspend fun findBySourceUrl(url: String): RecipeEntity? = dao.bySourceUrl(url)
 
-    /** Slaat een geïmporteerd (en evt. in het voorbeeldscherm bewerkt) recept op. @return het nieuwe id. */
-    suspend fun save(parsed: ParsedRecipe, imagePath: String? = null): String = db.withTransaction {
+    /**
+     * Slaat een geïmporteerd (en evt. in het voorbeeldscherm bewerkt) recept op. @return het nieuwe id.
+     * [keepId]/[createdAt]: bij het terugzetten van een back-up of het openen van een `.eazy` blijven die van het origineel
+     * (een id dat hier al bestaat, ook verwijderd, krijgt een nieuw).
+     */
+    suspend fun save(
+        parsed: ParsedRecipe,
+        imagePath: String? = null,
+        keepId: String? = null,
+        createdAt: Long? = null,
+        notes: String? = null,
+        favorite: Boolean = false,
+    ): String = db.withTransaction {
         val now = clock()
-        val id = newId()
+        val id = keepId?.takeIf { dao.recipe(it) == null } ?: newId()
         dao.insertRecipe(
             RecipeEntity(
                 id = id,
@@ -49,7 +60,9 @@ class RecipeRepository(
                 category = parsed.category,
                 cuisine = parsed.cuisine,
                 categoryId = null, // zie setCategories hieronder
-                createdAt = now,
+                createdAt = createdAt ?: now,
+                notes = notes?.trim()?.ifEmpty { null },
+                favorite = favorite,
                 updatedAt = now,
             )
         )

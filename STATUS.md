@@ -10,7 +10,7 @@ _Laatst bijgewerkt: 2026-11-22_
 | 1 — Design (mockups, kleursysteem, navigatie) | ✅ klaar (v0.2), goedgekeurd op hoofdlijnen |
 | 2 — Data + import | ✅ klaar |
 | 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
-| 4 — Koken, ordenen & delen | 🚧 4a–4d klaar, **4e (delen & back-up) volgende** — zie PLAN.md |
+| 4 — Koken, ordenen & delen | ✅ klaar (4a–4e) — **nog niet op de telefoon getest** |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -24,7 +24,7 @@ _Laatst bijgewerkt: 2026-11-22_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 108 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 114 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -128,10 +128,15 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
 
 - **Meerdere categorieën per recept** (wens 2026-11-22, schema v4: tabel `recipe_category`): paella = vis én vlees, staat onder beide tegels. `recipe.categoryId` blijft de hoofdsoort (kleur); op de kaart een tweede, kleinere sticker. In "Soort recept" vink je er meer aan en kies je met "Kleur" de hoofdsoort. De import-gok geeft vis + vlees als beide voorkomen (o.a. gamba's, chorizo). Bestaande recepten houden hun ene soort; een al geïmporteerde paella moet je zelf even "Vlees" erbij geven.
 
+- **4e** delen & back-up (`share/`):
+  - `.eazy` = ZIP met `eazy.json` (versie 1: recepten, categorieën, labels, collecties) + `images/`. Lezen met grenzen (grootte per onderdeel en totaal, JSON-diepte, tekstlengtes, aantallen), ids alleen `[A-Za-z0-9-]`, links alleen http(s). Zie `EazyFile.kt`.
+  - Receptscherm → deelknop: als tekst (met gekozen porties) of als `.eazy`. Collectie-menu → "Delen als bestand". Meer → "Back-up maken" (jij kiest waar) en "Bestand openen".
+  - Openen (ook via "Openen met"/"Delen" vanuit een andere app, alleen `content://`): voorbeeld → importeren. Dubbele recepten (zelfde id of bronlink) worden overgeslagen; categorieën op id/naam gekoppeld of aangemaakt; labels op naam; collecties op naam samengevoegd. Import en back-up lopen in `appScope` door als je het scherm verlaat; mislukt een import, dan blijven er geen losse foto's achter.
+
 ## Volgende stap
 
-1. **4e** — delen als tekst, `.eazy`-bestand (recept/collectie, met categorie en labels), volledige back-up exporteren/terugzetten.
-2. Nog steeds: alles op de telefoon testen (fase 3 + 4a–4c). Let bij 4b op omrekenen en foto kiezen; bij 4c op de timers (zie hierboven).
+1. **Alles op de telefoon testen** (fase 3 + 4). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten.
+2. Daarna **fase 5** (overige import: meerdere links, bladwijzers, foto/OCR, handmatig) — zie PLAN.md.
 
 ## Open punten
 

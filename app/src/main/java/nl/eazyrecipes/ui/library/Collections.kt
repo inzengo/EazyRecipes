@@ -58,6 +58,7 @@ data class CollectionActions(
     val create: (String) -> Unit = {},
     val rename: (String, String) -> Unit = { _, _ -> },
     val delete: (String) -> Unit = {},
+    val share: (String) -> Unit = {},
 )
 
 /** Inhoud van de tab "Collecties": kaarten in twee kolommen plus "Nieuwe collectie". */
@@ -90,6 +91,7 @@ fun CollectionsGrid(collections: List<CollectionSummary>, actions: CollectionAct
         if (c == null) menuFor = null else CollectionMenu(
             c,
             onRename = { menuFor = null; renaming = id },
+            onShare = { menuFor = null; actions.share(id) },
             onDelete = { menuFor = null; actions.delete(id) },
             onDismiss = { menuFor = null },
         )
@@ -159,12 +161,13 @@ private fun NewCollectionCard(onClick: () -> Unit, modifier: Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CollectionMenu(c: CollectionSummary, onRename: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+private fun CollectionMenu(c: CollectionSummary, onRename: () -> Unit, onShare: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
     var confirmDelete by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(c.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 8.dp))
             MenuRow(R.drawable.ph_pencil, Eazy.Brand, "Hernoemen", null, onRename)
+            if (c.recipes.isNotEmpty()) MenuRow(R.drawable.ph_share, Color(0xFF47E3BC), "Delen als bestand", "Met alle ${c.recipes.size} recepten; de ontvanger opent het in EazyRecipes", onShare)
             MenuRow(R.drawable.ph_folder, Color(0xFFFF5A4A), "Collectie verwijderen", "De recepten zelf blijven in je bibliotheek") { confirmDelete = true }
         }
     }

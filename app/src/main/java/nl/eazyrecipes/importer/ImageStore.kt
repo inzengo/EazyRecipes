@@ -73,6 +73,26 @@ class ImageStore(
         }.getOrNull()
     }
 
+    /** Een foto uit een `.eazy`-bestand bewaren (al verkleind bij het exporteren). Geen afbeelding = `null`. */
+    fun saveStream(input: InputStream): File? {
+        dir.mkdirs()
+        val name = UUID.randomUUID().toString()
+        val tmp = File(dir, "$name.part")
+        return runCatching { saveStreamTo(input, tmp, name) }.getOrNull().also { if (it == null) tmp.delete() }
+    }
+
+    private fun saveStreamTo(input: InputStream, tmp: File, name: String): File? {
+        if (!copyLimited(input, tmp)) return null
+        // Alleen echte afbeeldingen: eerst de afmetingen lezen.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(tmp.path, bounds)
+        val ext = when (bounds.outMimeType) {
+            "image/png" -> "png"; "image/webp" -> "webp"; "image/gif" -> "gif"; "image/jpeg" -> "jpg"; else -> null
+        }
+        val target = ext?.let { File(dir, "$name.$it") }
+        return if (target != null && bounds.outWidth > 0 && tmp.renameTo(target)) target else null
+    }
+
     internal fun saveBitmap(bitmap: Bitmap): File? {
         dir.mkdirs()
         val name = UUID.randomUUID().toString()
