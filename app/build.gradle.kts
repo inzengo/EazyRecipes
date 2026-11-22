@@ -13,8 +13,11 @@ android {
         applicationId = "nl.eazyrecipes"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.5.1"
+        versionCode = 7
+        versionName = "0.6.0"
+        // Alleen moderne telefoons: het ML Kit-leesmodel zit er per processorsoort in (57 MB → veel minder).
+        // Gevolg: de APK draait niet in een x86-emulator op de pc.
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     buildTypes {
@@ -74,6 +77,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.jsoup)
     implementation(libs.okhttp)
+    // Tekst van een foto of screenshot lezen (fase 5); het model zit in de app, dus het werkt offline.
+    implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

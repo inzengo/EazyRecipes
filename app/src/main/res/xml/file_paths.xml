@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Alleen de map met .eazy-bestanden die we via het deelmenu versturen. -->
+<!-- .eazy-bestanden die we via het deelmenu versturen, en de foto die de camera-app voor ons maakt. -->
 <paths>
     <cache-path name="shared" path="shared/" />
+    <cache-path name="camera" path="camera/" />
 </paths>

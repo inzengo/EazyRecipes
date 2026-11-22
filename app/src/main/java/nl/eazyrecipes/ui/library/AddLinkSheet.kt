@@ -5,6 +5,8 @@ import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import nl.eazyrecipes.R
 import nl.eazyrecipes.importer.RecipeImporter
 import nl.eazyrecipes.ui.components.BigPillButton
+import nl.eazyrecipes.ui.components.Chip
 import nl.eazyrecipes.ui.components.Ico
 import nl.eazyrecipes.ui.theme.Eazy
 
@@ -81,6 +84,8 @@ fun AddLinkSheet(
     onManual: () -> Unit = {},
     onBookmarks: () -> Unit = {},
     onEazyFile: () -> Unit = {},
+    onPickPhotos: () -> Unit = {},
+    onCamera: () -> Unit = {},
 ) {
     val context = LocalContext.current
     // Wat we automatisch invulden; dat bewaren we niet als "jouw tekst" bij per ongeluk sluiten.
@@ -101,7 +106,8 @@ fun AddLinkSheet(
             if (windowFocused) focus.requestFocus()
         }
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
+            // Scrollen: met het toetsenbord open passen de andere manieren er op een kleine telefoon niet altijd onder.
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("Recept toevoegen", style = MaterialTheme.typography.headlineSmall)
@@ -133,6 +139,7 @@ fun AddLinkSheet(
             )
             Text("Of op een andere manier", style = MaterialTheme.typography.labelLarge, color = Eazy.Muted, modifier = Modifier.padding(top = 6.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PhotoOption(onCamera, onPickPhotos)
                 AddOption(R.drawable.ph_pencil, Eazy.Brand, "Zelf invoeren", "Typ een recept over, zonder link", onManual)
                 AddOption(R.drawable.ph_bookmark, Color(0xFF4D9DFF), "Bladwijzers", "Receptlinks uit Chrome, Firefox of Safari", onBookmarks)
                 AddOption(R.drawable.ph_share, Color(0xFF47E3BC), ".eazy-bestand", "Een recept of collectie die iemand met je deelde", onEazyFile)
@@ -157,6 +164,29 @@ private fun AddOption(@DrawableRes icon: Int, color: Color, label: String, note:
             Text(note, style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
         }
         Ico(R.drawable.ic_chevron_right, 18.dp, tint = Eazy.Muted)
+    }
+}
+
+/** Foto of screenshot: twee knoppen, want de galerij-kiezer van Android heeft geen camera. */
+@Composable
+private fun PhotoOption(onCamera: () -> Unit, onPick: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Eazy.Grey).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFFF8AD4)), contentAlignment = Alignment.Center) {
+                Ico(R.drawable.ph_camera, 20.dp, tint = Eazy.Ink)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Foto of screenshot", style = MaterialTheme.typography.titleSmall)
+                Text("Uit een kookboek of van een scherm; wij lezen de tekst", style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
+            }
+        }
+        Row(Modifier.padding(start = 52.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("Foto maken", R.drawable.ph_camera, Eazy.Paper, onClick = onCamera)
+            Chip("Uit galerij", R.drawable.ph_folder, Eazy.Paper, onClick = onPick)
+        }
     }
 }
 

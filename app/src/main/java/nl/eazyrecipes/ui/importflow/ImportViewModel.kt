@@ -2,6 +2,8 @@ package nl.eazyrecipes.ui.importflow
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,10 +13,12 @@ import nl.eazyrecipes.data.RecipeRepository
 import nl.eazyrecipes.importer.ImageStore
 import nl.eazyrecipes.importer.ImportResult
 import nl.eazyrecipes.importer.ParsedRecipe
+import nl.eazyrecipes.importer.PhotoRecipeParser
+import nl.eazyrecipes.importer.PhotoUnreadable
 import nl.eazyrecipes.importer.RecipeImporter
 
 sealed interface ImportUiState {
-    data class Loading(val viaBrowser: Boolean = false) : ImportUiState
+    data class Loading(val viaBrowser: Boolean = false, val photoCount: Int = 0) : ImportUiState
     data class Failed(val title: String, val message: String, val canRetry: Boolean) : ImportUiState
     data class Editing(
         val draft: ParsedRecipe,
@@ -33,13 +37,22 @@ class ImportViewModel(
     private val importer: RecipeImporter,
     private val repository: RecipeRepository,
     private val images: ImageStore,
+    /** Foto's of screenshots om de tekst van te lezen, in plaats van een link. */
+    private val photos: List<Uri> = emptyList(),
+    private val readPhotos: suspend (List<Uri>) -> String = { "" },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Loading())
     val state: StateFlow<ImportUiState> = _state.asStateFlow()
 
     /** Zonder link: zelf invoeren (leeg concept). */
-    init { if (url.isBlank()) _state.value = ImportUiState.Editing(ParsedRecipe(title = "")) else load() }
+    init {
+        when {
+            photos.isNotEmpty() -> load()
+            url.isBlank() -> _state.value = ImportUiState.Editing(ParsedRecipe(title = ""))
+            else -> load()
+        }
+    }
 
     fun retry() = load()
 
@@ -49,6 +62,7 @@ class ImportViewModel(
     }
 
     private fun load() {
+        if (photos.isNotEmpty()) return loadPhotos()
         _state.value = ImportUiState.Loading()
         viewModelScope.launch {
             val result = importer.import(url) { _state.value = ImportUiState.Loading(viaBrowser = true) }
@@ -58,6 +72,29 @@ class ImportViewModel(
                     duplicateOf = result.recipe.sourceUrl?.let { repository.findBySourceUrl(it)?.id },
                 )
                 else -> failureFor(result)
+            }
+        }
+    }
+
+    private fun loadPhotos() {
+        _state.value = ImportUiState.Loading(photoCount = photos.size)
+        viewModelScope.launch {
+            _state.value = try {
+                PhotoRecipeParser.parse(readPhotos(photos))?.let { ImportUiState.Editing(it) } ?: ImportUiState.Failed(
+                    "Geen tekst gevonden",
+                    "We konden op deze foto geen tekst lezen. Een scherpe foto, recht van boven en met goed licht, werkt het best. " +
+                        "Je kunt het recept ook zelf invoeren.",
+                    canRetry = false,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ImportUiState.Failed(
+                    "Foto niet te lezen",
+                    if (e is PhotoUnreadable) "Deze foto kon niet worden geopend. Kies hem nog eens, of een andere foto."
+                    else "Het lezen van de tekst is mislukt. Probeer het nog eens.",
+                    canRetry = e !is PhotoUnreadable,
+                )
             }
         }
     }

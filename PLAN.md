@@ -174,6 +174,11 @@ zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we h
 
 ### Fase 5 — Overige import
 - Bladwijzers-bestand, OCR, handmatig invoeren, dubbele recepten
+- Alle manieren van toevoegen zitten onder de +-knop (wens 2026-11-22): link (of lijst links), foto of screenshot,
+  zelf invoeren, bladwijzers, .eazy-bestand. Onder "Meer" blijft alleen back-up maken/terugzetten.
+- Foto/screenshot: camera of tot 5 beelden uit de galerij → ML Kit-tekstherkenning in de app (offline) →
+  `PhotoRecipeParser` deelt in op kopjes (Ingrediënten/Bereiding, ook Engels) of gokt zonder kopjes →
+  bewerkscherm om na te kijken. Geen omslagfoto uit de foto (meestal een bladzijde tekst); die kies je daarna zelf.
 
 Daarna: boodschappenlijst, Ontdekken, delen B → C.
 

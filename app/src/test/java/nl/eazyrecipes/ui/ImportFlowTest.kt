@@ -149,4 +149,27 @@ class ImportViewModelTest {
         vm.retry()
         vm.await<ImportUiState.Editing>()
     }
+    private fun photoVm(read: suspend (List<android.net.Uri>) -> String) = ImportViewModel(
+        "", RecipeImporter({ error("geen netwerk") }, browser = null), repo,
+        ImageStore(tmp.newFolder(), okhttp3.OkHttpClient()),
+        photos = listOf(android.net.Uri.parse("content://test/1")),
+        readPhotos = read,
+    )
+
+    @Test fun `foto wordt een ingevuld concept`() = runTest {
+        val vm = photoVm { "Tosti\nIngrediënten\n2 sneetjes brood\n1 plak kaas\nBereiding\nBak de tosti goudbruin." }
+        val draft = vm.await<ImportUiState.Editing>().draft
+        assertEquals("Tosti", draft.title)
+        assertEquals(listOf("2 sneetjes brood", "1 plak kaas"), draft.ingredients)
+        assertNull("een foto heeft geen bronlink", draft.sourceUrl)
+    }
+
+    @Test fun `foto zonder tekst of onleesbaar geeft een uitleg`() = runTest {
+        assertEquals("Geen tekst gevonden", photoVm { "  " }.await<ImportUiState.Failed>().title)
+        var calls = 0
+        val vm = photoVm { if (calls++ == 0) throw IllegalStateException("ocr") else "Soep\nMeng alles." }
+        assertTrue(vm.await<ImportUiState.Failed>().canRetry)
+        vm.retry()
+        assertEquals("Soep", vm.await<ImportUiState.Editing>().draft.title)
+    }
 }

@@ -5,6 +5,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +78,7 @@ fun HomeScreen(
     onOpenFile: (android.net.Uri) -> Unit = {},
     onImportMany: (List<String>) -> Unit = {},
     onOpenBookmarks: (android.net.Uri) -> Unit = {},
+    onImportPhotos: (List<android.net.Uri>) -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -88,6 +90,17 @@ fun HomeScreen(
     // Hier en niet in het venster: dat is al dicht als de bestandskiezer terugkomt.
     val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenFile) }
     val openBookmarks = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenBookmarks) }
+    // Een recept kan over meer screenshots lopen: tot 5 tegelijk, in de volgorde waarin je ze kiest.
+    val pickPhotos = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(5)) { uris ->
+        if (uris.isNotEmpty()) onImportPhotos(uris)
+    }
+    // De camera-app schrijft naar een bestand van ons; onthouden welk, ook als Android de app intussen afsluit.
+    var cameraTarget by rememberSaveable { mutableStateOf<String?>(null) }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val target = cameraTarget?.let(android.net.Uri::parse)
+        cameraTarget = null
+        if (ok && target != null) onImportPhotos(listOf(target))
+    }
 
     BackHandler(enabled = tab != HomeTab.LIBRARY) { tab = HomeTab.LIBRARY }
 
@@ -126,8 +139,27 @@ fun HomeScreen(
             onManual = { draft = ""; addOpen = false; onImport("") },
             onBookmarks = { addOpen = false; openBookmarks.launch(arrayOf("text/html", "*/*")) },
             onEazyFile = { addOpen = false; openFile.launch(arrayOf("*/*")) },
+            onPickPhotos = {
+                addOpen = false
+                pickPhotos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onCamera = {
+                addOpen = false
+                val uri = newCameraUri(context)
+                cameraTarget = uri.toString()
+                // Geen camera-app (kan op sommige tablets)? Dan gebeurt er niets in plaats van een crash.
+                try { takePhoto.launch(uri) } catch (e: android.content.ActivityNotFoundException) { cameraTarget = null }
+            },
         )
     }
+}
+
+/** Leeg bestand voor de camera-app, in onze cache; oude camerafoto's ruimen we dan meteen op. */
+private fun newCameraUri(context: android.content.Context): android.net.Uri {
+    val dir = java.io.File(context.cacheDir, "camera").apply { mkdirs() }
+    dir.listFiles()?.forEach { it.delete() }
+    val file = java.io.File(dir, "foto-${System.currentTimeMillis()}.jpg")
+    return androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", file)
 }
 
 @Composable

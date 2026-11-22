@@ -71,7 +71,7 @@ fun ImportScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     when (val s = state) {
-        is ImportUiState.Loading -> LoadingView(url, s.viaBrowser, onClose)
+        is ImportUiState.Loading -> if (s.photoCount > 0) PhotoLoadingView(s.photoCount, onClose) else LoadingView(url, s.viaBrowser, onClose)
         is ImportUiState.Failed -> FailedView(s, onRetry = vm::retry, onManual = vm::manual, onClose = onClose)
         is ImportUiState.Editing -> RecipeEditor(
             draft = s.draft,
@@ -108,6 +108,25 @@ private fun LoadingView(url: String, viaBrowser: Boolean, onClose: () -> Unit) {
                 color = Eazy.Muted,
             )
         }
+    }
+}
+
+@Composable
+private fun PhotoLoadingView(count: Int, onClose: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().background(Eazy.Grey).statusBarsPadding().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        RoundButton(R.drawable.ic_close, "Annuleren", onClose, background = Eazy.Paper)
+        Spacer(Modifier.height(24.dp))
+        CircularProgressIndicator(color = Eazy.Ink, strokeWidth = 4.dp, modifier = Modifier.size(40.dp))
+        Text("Tekst\nlezen…", style = MaterialTheme.typography.displaySmall)
+        Chip(if (count == 1) "1 foto" else "$count foto's", R.drawable.ph_camera, Eazy.Paper)
+        Text(
+            "Daarna zie je het recept zoals we het gelezen hebben. Kijk het even na: een foto lezen gaat niet altijd foutloos.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Eazy.Muted,
+        )
     }
 }
 

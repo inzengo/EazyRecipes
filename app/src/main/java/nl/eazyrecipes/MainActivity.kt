@@ -38,6 +38,7 @@ import nl.eazyrecipes.ui.detail.RecipeScreen
 import nl.eazyrecipes.ui.detail.RecipeViewModel
 import nl.eazyrecipes.ui.editor.EditRecipeScreen
 import nl.eazyrecipes.ui.editor.EditRecipeViewModel
+import nl.eazyrecipes.importer.PhotoText
 import nl.eazyrecipes.ui.importflow.ImportScreen
 import nl.eazyrecipes.ui.importflow.ImportViewModel
 import nl.eazyrecipes.ui.home.HomeScreen
@@ -103,6 +104,7 @@ class MainActivity : ComponentActivity() {
                             onOpenFile = { nav.navigate(Routes.bundle(it)) },
                             onImportMany = { urls -> c.batch.enqueue(urls); nav.navigate(Routes.BATCH) },
                             onOpenBookmarks = { nav.navigate(Routes.bookmarks(it)) },
+                            onImportPhotos = { nav.navigate(Routes.importPhotos(it)) },
                             pantry = {
                                 val vm = viewModel { PantryViewModel(c.repository, getSharedPreferences("pantry", MODE_PRIVATE)) }
                                 PantryScreen(vm, onOpen = { nav.navigate(Routes.recipe(it)) })
@@ -111,10 +113,16 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(
                         Routes.IMPORT,
-                        arguments = listOf(navArgument("url") { type = NavType.StringType; defaultValue = "" }),
+                        arguments = listOf(
+                            navArgument("url") { type = NavType.StringType; defaultValue = "" },
+                            navArgument("photos") { type = NavType.StringType; defaultValue = "" },
+                        ),
                     ) { entry ->
                         val url = entry.arguments?.getString("url").orEmpty()
-                        val vm = viewModel { ImportViewModel(url, c.importer, c.repository, c.images) }
+                        val photos = entry.arguments?.getString("photos").orEmpty().lines().filter { it.isNotBlank() }.map(Uri::parse)
+                        val vm = viewModel {
+                            ImportViewModel(url, c.importer, c.repository, c.images, photos, readPhotos = { PhotoText.read(applicationContext, it) })
+                        }
                         ImportScreen(
                             url = url,
                             vm = vm,
@@ -207,7 +215,7 @@ class MainActivity : ComponentActivity() {
 
 private object Routes {
     const val LIBRARY = "library"
-    const val IMPORT = "import?url={url}"
+    const val IMPORT = "import?url={url}&photos={photos}"
     const val RECIPE = "recipe/{id}"
     const val EDIT = "recipe/{id}/edit"
     const val COOK = "recipe/{id}/cook"
@@ -219,6 +227,8 @@ private object Routes {
     const val BUNDLE = "bundle?uri={uri}"
     fun bundle(uri: Uri) = "bundle?uri=${Uri.encode(uri.toString())}"
     fun import(url: String) = "import?url=${Uri.encode(url)}"
+    /** Foto's als één argument: de uri's onder elkaar (een uri bevat zelf geen regeleinde). */
+    fun importPhotos(uris: List<Uri>) = "import?photos=${Uri.encode(uris.joinToString("\n"))}"
     // Ids komen soms uit een gedeeld bestand: altijd coderen, dan breekt een vreemd teken de route niet.
     fun recipe(id: String) = "recipe/${Uri.encode(id)}"
     fun edit(id: String) = "recipe/${Uri.encode(id)}/edit"
