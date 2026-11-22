@@ -22,6 +22,7 @@ class AppContainer(context: Context) {
     val repository = RecipeRepository(EazyDatabase.get(context))
     val images = ImageStore(File(context.filesDir, "images"))
     val importer = RecipeImporter(http = HttpPageFetcher(), browser = WebViewPageFetcher(context))
+    val timers = nl.eazyrecipes.cook.KitchenTimers(context.getSharedPreferences("timers", Context.MODE_PRIVATE))
     /** Voor schrijfacties die niet mogen stoppen als een scherm (en zijn ViewModel) verdwijnt, zoals een notitie opslaan. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }

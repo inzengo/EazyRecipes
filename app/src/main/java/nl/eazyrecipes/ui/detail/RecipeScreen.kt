@@ -86,6 +86,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import nl.eazyrecipes.recipe.IngredientParts
 import nl.eazyrecipes.ui.components.dashedBorder
+import nl.eazyrecipes.ui.components.BigPillButton
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -251,12 +253,12 @@ class RecipeViewModel(
 }
 
 @Composable
-fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit) {
+fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit, onCook: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
     // Terug van het bewerkscherm: opnieuw laden (dit scherm verlaat de compositie zolang je bewerkt).
     LaunchedEffect(Unit) { vm.reload() }
     when (val s = state) {
-        is DetailState.Found -> Detail(s.details, vm, onBack = { vm.flushNote(); onBack() }, onEdit = { vm.flushNote(); onEdit() })
+        is DetailState.Found -> Detail(s.details, vm, onBack = { vm.flushNote(); onBack() }, onEdit = { vm.flushNote(); onEdit() }, onCook = { vm.flushNote(); onCook() })
         DetailState.Gone -> Column(Modifier.fillMaxSize().background(Eazy.Grey).statusBarsPadding().padding(16.dp)) {
             RoundButton(R.drawable.ic_back, "Terug", onBack, background = Eazy.Paper)
             Text("Dit recept bestaat niet meer.", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 24.dp))
@@ -268,7 +270,7 @@ fun RecipeScreen(vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit) {
 private val PHOTO_HEIGHT = 320.dp
 
 @Composable
-private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit) {
+private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, onEdit: () -> Unit, onCook: () -> Unit) {
     val r = d.recipe
     val ctx = r.mainIngredient.context
     val context = LocalContext.current
@@ -315,7 +317,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                 }
             }
             Column(
-                Modifier.offset(y = (-36).dp).background(Eazy.Paper, TopRounded).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 40.dp)
+                Modifier.offset(y = (-36).dp).background(Eazy.Paper, TopRounded).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = if (d.steps.isNotEmpty()) 110.dp else 40.dp)
                     .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
@@ -390,6 +392,13 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
             }
         }
         PhotoStatusBar(scroll, PHOTO_HEIGHT)
+        if (d.steps.isNotEmpty()) {
+            BigPillButton(
+                "Start kookmodus", R.drawable.ph_play, if (r.mainIngredient == null) Eazy.Brand else ctx.vivid, onCook,
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .shadow(18.dp, CircleShape, spotColor = Eazy.Ink.copy(alpha = 0.4f)),
+            )
+        }
     }
 
     if (coverOptions) {

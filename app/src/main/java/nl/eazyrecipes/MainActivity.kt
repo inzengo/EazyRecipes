@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -18,6 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import nl.eazyrecipes.cook.CookScreen
+import nl.eazyrecipes.cook.TimerService
 import nl.eazyrecipes.ui.detail.RecipeScreen
 import nl.eazyrecipes.ui.detail.RecipeViewModel
 import nl.eazyrecipes.ui.editor.EditRecipeScreen
@@ -43,6 +46,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         if (savedInstanceState == null) pendingShare = extractSharedUrl(intent)
+        // Liepen er nog kookwekkers (app was afgesloten)? Dan de service weer starten.
+        TimerService.ensureRunning(this)
         val c = container
         setContent {
             EazyTheme {
@@ -88,7 +93,17 @@ class MainActivity : ComponentActivity() {
                     ) { entry ->
                         val id = entry.arguments?.getString("id").orEmpty()
                         val vm = viewModel { RecipeViewModel(id, c.repository, c.images, c.appScope) }
-                        RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) })
+                        RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) }, onCook = { nav.navigate(Routes.cook(id)) })
+                    }
+                    composable(
+                        Routes.COOK,
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { entry ->
+                        val id = entry.arguments?.getString("id").orEmpty()
+                        // Zelfde ViewModel als het detailscherm eronder: dan kloppen de gekozen porties.
+                        val parent = remember(entry) { nav.getBackStackEntry(Routes.RECIPE) }
+                        val vm = viewModel(parent) { RecipeViewModel(id, c.repository, c.images, c.appScope) }
+                        CookScreen(vm, onClose = { nav.popBackStack() })
                     }
                     composable(
                         Routes.EDIT,
@@ -114,9 +129,11 @@ private object Routes {
     const val IMPORT = "import?url={url}"
     const val RECIPE = "recipe/{id}"
     const val EDIT = "recipe/{id}/edit"
+    const val COOK = "recipe/{id}/cook"
     fun import(url: String) = "import?url=${Uri.encode(url)}"
     fun recipe(id: String) = "recipe/$id"
     fun edit(id: String) = "recipe/$id/edit"
+    fun cook(id: String) = "recipe/$id/cook"
 }
 
 private val urlRegex = Regex("""https?://\S+""")

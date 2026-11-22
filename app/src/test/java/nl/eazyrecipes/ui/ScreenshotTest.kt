@@ -201,6 +201,20 @@ class ScreenshotTest {
         nl.eazyrecipes.ui.pantry.PantryScreen(nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, nl.eazyrecipes.ui.pantry.PantrySelection()), pantryActions)
     }
 
+    @Test fun cook_mode() {
+        val id = runBlocking { repo.save(checkNotNull(JsonLdRecipeParser.parse(html, url))) }
+        val d = checkNotNull(runBlocking { repo.get(id) })
+        val now = 1_000_000L
+        // Stap 2 noemt "10 minuten" (loopt nog 4:05) en "14 minuten"; een timer bij stap 1 is al afgegaan.
+        val timers = listOf(
+            nl.eazyrecipes.cook.KitchenTimer("t1", id, d.recipe.title, 1, 600, now + 245_000),
+            nl.eazyrecipes.cook.KitchenTimer("t2", id, d.recipe.title, 0, 300, now - 1, ringing = true),
+        )
+        shot("09-cook") {
+            nl.eazyrecipes.cook.CookContent(d, factor = 1.0, servings = d.recipe.servings, timers = timers, actions = nl.eazyrecipes.cook.CookActions(), now = now, initialStep = 1)
+        }
+    }
+
     @Test fun import_loading() = shot("03-import-loading") {
         // Nooit klaar, zodat de laad-toestand blijft staan.
         val vm = ImportViewModel(url, RecipeImporter({ kotlinx.coroutines.awaitCancellation() }, null), repo, ImageStore(tmp.newFolder(), noNetwork))
