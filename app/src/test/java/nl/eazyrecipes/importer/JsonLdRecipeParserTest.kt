@@ -27,7 +27,7 @@ class JsonLdRecipeParserTest {
         assertEquals(30, r.totalMinutes)
         assertEquals("Hoofdgerechten", r.category)
         assertEquals("Aziatische recepten", r.cuisine)
-        assertEquals("vlees", r.categoryId)
+        assertEquals("vlees", r.categoryIds.firstOrNull())
 
         assertEquals(13, r.ingredients.size)
         assertEquals("150 gr rijst", r.ingredients.first())
@@ -54,7 +54,7 @@ class JsonLdRecipeParserTest {
         assertEquals(40, r.cookMinutes)
         assertEquals("totalTime van de bron wint van prep+cook", 100, r.totalMinutes)
         assertEquals("Bakrecepten", r.category)
-        assertEquals("zoet", r.categoryId)
+        assertEquals("zoet", r.categoryIds.firstOrNull())
         assertEquals(14, r.ingredients.size)
         assertEquals("250 gr zelfrijzend bakmeel", r.ingredients.first())
         assertEquals("de bron heeft 11 HowToSteps, waarvan 2 alleen \"\\n\" bevatten", 9, r.steps.size)
@@ -96,7 +96,7 @@ class JsonLdRecipeParserTest {
         assertEquals(4, r.servings)
         assertEquals("https://x.nl/a.jpg", r.imageUrl)
         assertEquals(listOf(ParsedStep("Kook de pasta."), ParsedStep("Roer de pesto erdoor.")), r.steps)
-        assertEquals("vega", r.categoryId)
+        assertEquals("vega", r.categoryIds.firstOrNull())
     }
 
     @Test

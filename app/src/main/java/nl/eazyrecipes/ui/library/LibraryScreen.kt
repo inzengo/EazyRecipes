@@ -175,7 +175,7 @@ fun LibraryScreen(
                         item(span = StaggeredGridItemSpan.FullLine, key = "featured") { Featured(r) { open(r.id) } }
                     }
                     itemsIndexed(state.shown, key = { _, r -> r.id }) { i, r ->
-                        RecipeCard(r, cardHeight(i), onClick = { open(r.id) }, onFavorite = { onToggleFavorite(r) })
+                        RecipeCard(r, state.categoriesOf[r.id].orEmpty(), cardHeight(i), onClick = { open(r.id) }, onFavorite = { onToggleFavorite(r) })
                     }
                 }
             }
@@ -412,18 +412,30 @@ private fun Featured(r: RecipeEntity, onClick: () -> Unit) {
 }
 
 @Composable
-private fun RecipeCard(r: RecipeEntity, height: Dp, onClick: () -> Unit, onFavorite: () -> Unit, modifier: Modifier = Modifier) {
-    val ctx = r.context
+private fun RecipeCard(r: RecipeEntity, categories: Set<String>, height: Dp, onClick: () -> Unit, onFavorite: () -> Unit, modifier: Modifier = Modifier) {
+    val cats = LocalCategories.current
+    // Hoofdsoort, of (als die er onverhoopt niet meer is) de eerste andere soort.
+    val ctx = r.context.takeIf { it != Eazy.Alles } ?: cats.list.firstOrNull { it.id in categories }?.let { cats.context(it.id) } ?: Eazy.Alles
+    // Tweede soort (bv. paella: vis + vlees) als klein sticker naast de hoofdsoort, in tegelvolgorde.
+    val second = cats.list.firstOrNull { it.id in categories && cats.context(it.id) != ctx }?.let { cats.context(it.id) }
     Box(modifier) {
         Surface(onClick = onClick, color = Color.Transparent) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(24.dp))) {
                     RecipePhoto(r.imagePath, r.imageUrl, ctx, Modifier.fillMaxSize())
                     // Categorie-sticker: kleur + icoon (kleur is nooit het enige signaal). Zonder soort: geen sticker.
-                    if (ctx != Eazy.Alles) Box(
-                        Modifier.padding(8.dp).size(34.dp).clip(RoundedCornerShape(12.dp)).background(ctx.vivid),
-                        contentAlignment = Alignment.Center,
-                    ) { Ico(ctx.icon, 19.dp, tint = Eazy.Ink, contentDescription = ctx.label) }
+                    if (ctx != Eazy.Alles) Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(ctx.vivid),
+                            contentAlignment = Alignment.Center,
+                        ) { Ico(ctx.icon, 19.dp, tint = Eazy.Ink, contentDescription = ctx.label) }
+                        second?.let { c2 ->
+                            Box(
+                                Modifier.size(26.dp).clip(RoundedCornerShape(9.dp)).background(c2.vivid),
+                                contentAlignment = Alignment.Center,
+                            ) { Ico(c2.icon, 15.dp, tint = Eazy.Ink, contentDescription = c2.label) }
+                        }
+                    }
                     formatMinutes(r.totalMinutes)?.let {
                         TimeBadge(it, isQuick(r.totalMinutes), Modifier.align(Alignment.BottomStart).padding(8.dp))
                     }

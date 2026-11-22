@@ -18,8 +18,8 @@ data class ParsedRecipe(
     val totalMinutes: Int? = null,
     val category: String? = null,
     val cuisine: String? = null,
-    /** Soort recept (id van een categorie); bij import de gok van [MainIngredientGuesser] als standaardcategorie. */
-    val categoryId: String? = null,
+    /** Categorieën (ids), de eerste is de hoofdsoort (kleur). Bij import de gok van [MainIngredientGuesser]. */
+    val categoryIds: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
     val ingredients: List<String> = emptyList(),
     val steps: List<ParsedStep> = emptyList(),

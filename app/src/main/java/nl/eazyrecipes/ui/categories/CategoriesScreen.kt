@@ -71,8 +71,9 @@ data class CategoryRow(val category: CategoryEntity, val recipes: Int)
 
 class CategoriesViewModel(private val repository: RecipeRepository) : ViewModel() {
     val rows: StateFlow<List<CategoryRow>?> =
-        combine(repository.observeCategories(), repository.observeLibrary()) { cats, recipes ->
-            val counts = recipes.groupingBy { it.categoryId }.eachCount()
+        combine(repository.observeCategories(), repository.observeLibrary(), repository.observeRecipeCategories()) { cats, recipes, of ->
+            val live = recipes.map { it.id }.toSet()
+            val counts = of.filterKeys { it in live }.values.flatten().groupingBy { it }.eachCount()
             cats.map { CategoryRow(it, counts[it.id] ?: 0) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

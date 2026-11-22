@@ -59,7 +59,10 @@ data class RecipeEntity(
     val cuisine: String? = null,
     /** v1-veld; sinds v2 niet meer gebruikt (vervangen door [categoryId]). Blijft staan: een kolom weghalen vergt in SQLite een hele tabel-herbouw. */
     val mainIngredient: MainIngredient? = null,
-    /** Soort recept, zie [CategoryEntity]. `null` = geen soort. Geen foreign key: een verwijderde categorie is een soft-delete. */
+    /**
+     * Hoofdsoort: bepaalt kleur en icoon. Een recept kan in meer categorieën zitten (paella: vis én vlees), zie
+     * [RecipeCategoryEntity]; deze staat daar ook in. `null` = geen soort. Geen foreign key: categorieën zijn soft-delete.
+     */
     val categoryId: String? = null,
     val notes: String? = null,
     val favorite: Boolean = false,
@@ -119,6 +122,21 @@ data class TagEntity(
     @ColumnInfo(defaultValue = "0") val hidden: Boolean = false,
     /** Samengevoegd in dit label: een import met deze oude naam komt dan bij het nieuwe terecht. (v3) */
     val mergedInto: String? = null,
+)
+
+/** Recept ↔ categorie (een recept kan in meerdere zitten). Sinds schema v4. */
+@Entity(
+    tableName = "recipe_category",
+    primaryKeys = ["recipeId", "categoryId"],
+    foreignKeys = [ForeignKey(RecipeEntity::class, ["id"], ["recipeId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("categoryId")],
+)
+data class RecipeCategoryEntity(
+    val recipeId: String,
+    val categoryId: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
 )
 
 /** Label met het aantal (niet-verwijderde) recepten dat het heeft. */

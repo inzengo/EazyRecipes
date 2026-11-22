@@ -113,7 +113,7 @@ class ImportViewModelTest {
         assertEquals("Kip kerrie: romig en vers gemaakt", editing.draft.title)
         assertNull(editing.duplicateOf)
 
-        vm.edit { it.copy(title = "Kip kerrie van mama", categoryId = "vis", ingredients = it.ingredients + "  ") }
+        vm.edit { it.copy(title = "Kip kerrie van mama", categoryIds = listOf("vis"), ingredients = it.ingredients + "  ") }
         vm.save()
 
         val id = vm.await<ImportUiState.Saved>().id

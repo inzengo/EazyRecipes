@@ -53,6 +53,7 @@ import nl.eazyrecipes.ui.formatMinutes
 import nl.eazyrecipes.ui.theme.Eazy
 import nl.eazyrecipes.ui.theme.context
 import nl.eazyrecipes.ui.theme.accent
+import nl.eazyrecipes.ui.theme.LocalCategories
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -347,7 +348,8 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (ctx != Eazy.Alles) Chip(ctx.label, ctx.icon, ctx.vivid)
+                    val cats = LocalCategories.current
+                    d.categoryIds.map(cats::context).filter { it != Eazy.Alles }.forEach { c -> Chip(c.label, c.icon, c.vivid) }
                     r.sourceSite?.let { site ->
                         Chip(site, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted, onClick = {
                             r.sourceUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }

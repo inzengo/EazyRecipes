@@ -88,9 +88,62 @@ interface RecipeDao {
     @Query("UPDATE category SET deletedAt = :now, updatedAt = :now WHERE id = :id")
     suspend fun softDeleteCategory(id: String, now: Long)
 
-    /** Recepten van een verwijderde categorie worden "zonder soort" (hun updatedAt verandert mee, voor sync). */
-    @Query("UPDATE recipe SET categoryId = NULL, updatedAt = :now WHERE categoryId = :id")
-    suspend fun clearCategory(id: String, now: Long)
+    /**
+     * Na het verwijderen van categorie [id]: recepten met die hoofdsoort krijgen hun volgende (nog bestaande) soort,
+     * of geen. Hun updatedAt verandert mee (sync).
+     */
+    @Query(
+        """
+        UPDATE recipe SET updatedAt = :now, categoryId = (
+            SELECT rc.categoryId FROM recipe_category rc JOIN category c ON c.id = rc.categoryId
+            WHERE rc.recipeId = recipe.id AND rc.deletedAt IS NULL AND c.deletedAt IS NULL
+            ORDER BY c.position, c.createdAt LIMIT 1
+        )
+        WHERE categoryId = :id
+        """
+    )
+    suspend fun reassignPrimary(id: String, now: Long)
+
+    @Query(
+        """
+        UPDATE recipe SET updatedAt = :now WHERE deletedAt IS NULL
+        AND id IN (SELECT recipeId FROM recipe_category WHERE categoryId = :id AND deletedAt IS NULL)
+        """
+    )
+    suspend fun touchRecipesInCategory(id: String, now: Long)
+
+    @Query("UPDATE recipe_category SET deletedAt = :now, updatedAt = :now WHERE categoryId = :id AND deletedAt IS NULL")
+    suspend fun softDeleteCategoryLinks(id: String, now: Long)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertRecipeCategories(items: List<RecipeCategoryEntity>)
+
+    /** Een eerder weggehaalde koppeling weer aanzetten (een actieve blijft onaangeroerd: geen onnodige sync). */
+    @Query("UPDATE recipe_category SET deletedAt = NULL, updatedAt = :now WHERE recipeId = :recipeId AND categoryId = :categoryId AND deletedAt IS NOT NULL")
+    suspend fun reviveRecipeCategory(recipeId: String, categoryId: String, now: Long)
+
+    @Query("UPDATE recipe_category SET deletedAt = :now, updatedAt = :now WHERE recipeId = :recipeId AND deletedAt IS NULL AND categoryId NOT IN (:keep)")
+    suspend fun removeOtherCategories(recipeId: String, keep: List<String>, now: Long)
+
+    /** Actieve categorieën van een recept, in tegelvolgorde. */
+    @Query(
+        """
+        SELECT rc.categoryId FROM recipe_category rc JOIN category c ON c.id = rc.categoryId
+        WHERE rc.recipeId = :recipeId AND rc.deletedAt IS NULL AND c.deletedAt IS NULL
+        ORDER BY c.position, c.createdAt
+        """
+    )
+    suspend fun categoriesOf(recipeId: String): List<String>
+
+    @Query(
+        """
+        SELECT rc.* FROM recipe_category rc
+        JOIN category c ON c.id = rc.categoryId
+        JOIN recipe r ON r.id = rc.recipeId
+        WHERE rc.deletedAt IS NULL AND c.deletedAt IS NULL AND r.deletedAt IS NULL
+        """
+    )
+    fun observeRecipeCategories(): Flow<List<RecipeCategoryEntity>>
 
     // --- collecties ---
 

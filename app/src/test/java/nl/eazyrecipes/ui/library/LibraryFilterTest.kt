@@ -28,6 +28,8 @@ class LibraryFilterTest {
         assertEquals("alleen de eigen soort (categorieën zijn van de gebruiker)", listOf("Pasta pesto"), ids(LibraryFilter(category = "vega")))
         assertEquals(listOf("Linzensoep"), ids(LibraryFilter(category = "vegan")))
         assertEquals("eigen categorie", emptyList<String>(), ids(LibraryFilter(category = "c-soep")))
+        val catsOf = mapOf("Zalm" to setOf("vis", "vlees"))
+        assertEquals("ook onder een tweede soort", listOf("Zalm", "Kip kerrie"), applyFilter(all, null, LibraryFilter(category = "vlees"), categoriesOf = catsOf).map { it.title })
         val labelsOf = mapOf("Kip kerrie" to setOf("l-snel", "l-week"), "Zalm" to setOf("l-week"))
         fun withLabels(vararg l: String) = applyFilter(all, null, LibraryFilter(labels = l.toSet()), labelsOf = labelsOf).map { it.title }
         assertEquals(listOf("Zalm", "Kip kerrie"), withLabels("l-week"))

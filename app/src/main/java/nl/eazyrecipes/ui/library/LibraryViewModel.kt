@@ -34,10 +34,11 @@ import java.util.Locale
  */
 const val QUICK = "snel"
 
-fun categoryMatches(category: String?, r: RecipeEntity): Boolean = when (category) {
+/** [categoriesOf]: per recept al zijn soorten (een recept kan in meerdere); zonder kaart alleen de hoofdsoort. */
+fun categoryMatches(category: String?, r: RecipeEntity, categoriesOf: Map<String, Set<String>> = emptyMap()): Boolean = when (category) {
     null -> true
     QUICK -> isQuick(r.totalMinutes)
-    else -> r.categoryId == category
+    else -> r.categoryId == category || category in categoriesOf[r.id].orEmpty()
 }
 
 enum class LibraryTab { RECIPES, FAVORITES, COLLECTIONS }
@@ -79,6 +80,8 @@ data class LibraryUiState(
     val unknownTimeCount: Int = 0,
     /** Zichtbare labels met recepten, meest gebruikt eerst (voor het filter). */
     val labels: List<LabelSummary> = emptyList(),
+    /** Per recept al zijn categorieën (voor de tweede sticker op een kaart). */
+    val categoriesOf: Map<String, Set<String>> = emptyMap(),
 ) {
     /** De collectie die nu open staat (of `null`). */
     val openCollection: CollectionSummary? get() = filter.collectionId?.let { id -> collections.firstOrNull { it.id == id } }
@@ -97,11 +100,13 @@ fun applyFilter(
     inCollection: Set<String>? = null,
     /** Per recept zijn label-ids. */
     labelsOf: Map<String, Set<String>> = emptyMap(),
+    /** Per recept zijn categorie-ids. */
+    categoriesOf: Map<String, Set<String>> = emptyMap(),
 ): List<RecipeEntity> {
     val filtered = all.filter { r ->
         (inCollection == null || r.id in inCollection) &&
         (f.tab != LibraryTab.FAVORITES || r.favorite) &&
-            categoryMatches(f.category, r) &&
+            categoryMatches(f.category, r, categoriesOf) &&
             (ftsIds == null || r.id in ftsIds) &&
             (f.maxMinutes == null || (r.totalMinutes != null && r.totalMinutes <= f.maxMinutes)) &&
             (f.sources.isEmpty() || r.sourceSite in f.sources) &&
@@ -148,10 +153,17 @@ class LibraryViewModel(
     private val collections = repository.observeCollections()
 
     /** Categorieën en labels samen (combine kan hooguit vijf bronnen). */
-    private data class Meta(val categoryIds: Set<String>, val labels: List<LabelSummary>, val labelsOf: Map<String, Set<String>>)
+    private data class Meta(
+        val categoryIds: Set<String>,
+        val labels: List<LabelSummary>,
+        val labelsOf: Map<String, Set<String>>,
+        val categoriesOf: Map<String, Set<String>>,
+    )
 
-    private val meta = combine(repository.observeCategories(), repository.observeLabels(), repository.observeRecipeLabels()) { cats, labels, of ->
-        Meta(cats.map { it.id }.toSet(), labels.filter { !it.tag.hidden && it.recipes > 0 }, of)
+    private val meta = combine(
+        repository.observeCategories(), repository.observeLabels(), repository.observeRecipeLabels(), repository.observeRecipeCategories(),
+    ) { cats, labels, of, catsOf ->
+        Meta(cats.map { it.id }.toSet(), labels.filter { !it.tag.hidden && it.recipes > 0 }, of, catsOf)
     }
 
     val state: StateFlow<LibraryUiState?> = combine(library, filter, ftsIds, collections, meta) { all, raw, ids, cols, m ->
@@ -165,7 +177,8 @@ class LibraryViewModel(
         val inCollection = f.collectionId?.let { id -> cols.firstOrNull { it.id == id }?.recipes?.map { it.id }?.toSet() ?: emptySet() }
         LibraryUiState(
             total = all.size,
-            shown = applyFilter(all, ids, f, inCollection, m.labelsOf).filter { it.id != featured?.id },
+            shown = applyFilter(all, ids, f, inCollection, m.labelsOf, m.categoriesOf).filter { it.id != featured?.id },
+            categoriesOf = m.categoriesOf,
             featured = featured,
             filter = f,
             availableSources = all.mapNotNull { it.sourceSite }.distinct().sortedWith(dutch),

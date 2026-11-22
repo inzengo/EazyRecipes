@@ -67,10 +67,10 @@ class MigrationTest {
     }
 
     @Test
-    fun `v1 naar v3 - standaardcategorieen erbij, recepten houden soort en labels`() = runBlocking {
+    fun `v1 naar v4 - standaardcategorieen erbij, recepten houden soort en labels`() = runBlocking {
         createV1()
         val db = Room.databaseBuilder(context, EazyDatabase::class.java, name)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .allowMainThreadQueries()
             .build()
         try {
@@ -81,6 +81,8 @@ class MigrationTest {
             assertEquals("vegan", byId.getValue("r2").categoryId)
             assertNull(byId.getValue("r3").categoryId)
             assertEquals("zoet", byId.getValue("r4").categoryId)
+            // v4: de soort staat ook in de koppeltabel (meerdere soorten per recept).
+            assertEquals(mapOf("r1" to setOf("vlees"), "r2" to setOf("vegan"), "r4" to setOf("zoet")), repo.observeRecipeCategories().first())
             assertEquals("verwijderde recepten blijven weg", null, byId["r5"])
             db.query("SELECT COUNT(*) FROM category", null).use { it.moveToFirst(); assertEquals(5, it.getInt(0)) }
             // Labels (v3): bestaande tag blijft, zichtbaar en zonder kleur.

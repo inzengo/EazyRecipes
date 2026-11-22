@@ -37,6 +37,10 @@ class MainIngredientGuesserTest {
     @Test fun `rijst is geen ijs`() = assertEquals(MainIngredient.VEGA, guess(category = "Rijstgerechten", ingredients = listOf("rijst", "paprika")))
     @Test fun vegan() = assertEquals(MainIngredient.VEGAN, guess(diets = listOf("https://schema.org/VeganDiet")))
     @Test fun vis() = assertEquals(MainIngredient.VIS, guess(ingredients = listOf("300 gr zalmfilet", "1 citroen")))
+    @Test fun `paella met chorizo is vis en vlees`() = assertEquals(
+        listOf(MainIngredient.VIS, MainIngredient.VLEES),
+        MainIngredientGuesser.guessAll(null, emptyList(), emptyList(), listOf("300 g paellarijst", "200 g gamba's", "100 g chorizo")),
+    )
     @Test fun vlees() = assertEquals(MainIngredient.VLEES, guess(ingredients = listOf("500 gr rundergehakt")))
     @Test fun `ketchup is geen kip`() = assertEquals(MainIngredient.VEGA, guess(ingredients = listOf("2 el ketchup")))
     @Test fun `vega kipstukjes zijn vega`() = assertEquals(MainIngredient.VEGA, guess(ingredients = listOf("200 gr vega kipstukjes")))

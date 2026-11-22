@@ -18,8 +18,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CollectionRecipeEntity::class,
         RecipeFtsEntity::class,
         CategoryEntity::class,
+        RecipeCategoryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class EazyDatabase : RoomDatabase() {
@@ -30,7 +31,7 @@ abstract class EazyDatabase : RoomDatabase() {
 
         fun get(context: Context): EazyDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, EazyDatabase::class.java, "eazyrecipes.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(SeedCategories)
                 .build()
                 .also { instance = it }
@@ -67,5 +68,22 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("ALTER TABLE `tag` ADD COLUMN `color` TEXT DEFAULT NULL")
         db.execSQL("ALTER TABLE `tag` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE `tag` ADD COLUMN `mergedInto` TEXT DEFAULT NULL")
+    }
+}
+
+/** v3 → v4: een recept kan in meerdere categorieën. Elk recept krijgt zijn huidige soort als (enige) koppeling. */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `recipe_category` (`recipeId` TEXT NOT NULL, `categoryId` TEXT NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, " +
+                "PRIMARY KEY(`recipeId`, `categoryId`), " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipe`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_recipe_category_categoryId` ON `recipe_category` (`categoryId`)")
+        db.execSQL(
+            "INSERT OR IGNORE INTO `recipe_category` (`recipeId`, `categoryId`, `createdAt`, `updatedAt`, `deletedAt`) " +
+                "SELECT `id`, `categoryId`, `updatedAt`, `updatedAt`, NULL FROM `recipe` WHERE `categoryId` IS NOT NULL"
+        )
     }
 }

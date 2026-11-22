@@ -1,6 +1,7 @@
 package nl.eazyrecipes.ui.editor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,7 +84,9 @@ fun RecipeEditor(
 ) {
     val d = draft
     val categories = LocalCategories.current
-    val ctx = categories.context(d.categoryId)
+    // Alleen soorten die (nog) bestaan: een gok kan op een verwijderde standaardsoort vallen.
+    val ids = d.categoryIds.filter { id -> categories.list.any { it.id == id } }
+    val ctx = categories.context(ids.firstOrNull())
     val scroll = rememberScrollState()
     var pickKind by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(Eazy.Paper)) {
@@ -104,7 +107,10 @@ fun RecipeEditor(
                 // Soort = een gok van de importer; één tik om te corrigeren, verder geen aandacht.
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (ctx == Eazy.Alles) Chip("Kies soort", ctx.icon, Eazy.Grey, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down)
-                    else Chip(ctx.label, ctx.icon, ctx.vivid, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down)
+                    else Chip(
+                        ctx.label + (if (ids.size > 1) " +${ids.size - 1}" else ""),
+                        ctx.icon, ctx.vivid, onClick = { pickKind = true }, trailing = R.drawable.ic_chevron_down,
+                    )
                     siteLabel(d.sourceUrl)?.let { Chip(it, R.drawable.ic_link, Eazy.Grey, contentColor = Eazy.Muted) }
                 }
 
@@ -183,8 +189,10 @@ fun RecipeEditor(
     if (pickKind) {
         KindSheet(
             categories = categories.list,
-            selected = d.categoryId,
-            onPick = { pick -> onEdit { it.copy(categoryId = pick) }; pickKind = false },
+            selected = ids,
+            // Op het actuele concept rekenen (niet op een vastgelegde lijst): twee snelle tikken gaan dan niet verloren.
+            onToggle = { id -> onEdit { r -> r.copy(categoryIds = r.categoryIds.let { if (id in it) it - id else it + id }) } },
+            onPrimary = { id -> onEdit { r -> r.copy(categoryIds = listOf(id) + (r.categoryIds - id)) } },
             onDismiss = { pickKind = false },
         )
     }
@@ -192,33 +200,59 @@ fun RecipeEditor(
 
 private val PHOTO_HEIGHT = 300.dp
 
+/**
+ * Soorten kiezen: meerdere mogen (paella = vis én vlees). De bovenste gekozen is de hoofdsoort en bepaalt de kleur;
+ * "Kleur" bij een andere gekozen soort maakt die de hoofdsoort.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KindSheet(categories: List<CategoryEntity>, selected: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
+private fun KindSheet(
+    categories: List<CategoryEntity>,
+    selected: List<String>,
+    onToggle: (String) -> Unit,
+    onPrimary: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Eazy.Paper) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding()) {
             Text("Soort recept", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Bepaalt de kleur en de tegel in je bibliotheek. Eigen soorten maak je onder Meer → Categorieën.",
+                "Kies er één of meer; het recept staat dan onder elke tegel. De soort met \"Kleur\" bepaalt de kleur.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Eazy.Muted,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
-            (categories.map { it.id to it.context } + (null to Eazy.Alles.copy(label = "Geen soort"))).forEach { (m, c) ->
-                Surface(onClick = { onPick(m) }, color = Color.Transparent, shape = MaterialTheme.shapes.medium) {
+            categories.forEach { cat ->
+                val c = cat.context
+                val on = cat.id in selected
+                val primary = selected.firstOrNull() == cat.id
+                Surface(
+                    onClick = { onToggle(cat.id) },
+                    color = Color.Transparent,
+                    shape = MaterialTheme.shapes.medium,
+                ) {
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Box(Modifier.size(44.dp).clip(CircleShape).background(if (m == null) Eazy.Grey else c.vivid), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(c.vivid), contentAlignment = Alignment.Center) {
                             Ico(c.icon, 22.dp, tint = Eazy.Ink)
                         }
                         Text(c.label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (m == selected) Ico(R.drawable.ic_check, 22.dp, tint = Eazy.Ink, contentDescription = "Gekozen")
+                        when {
+                            primary -> Chip("Kleur", null, c.vivid)
+                            on -> Chip("Kleur", null, Eazy.Grey, contentColor = Eazy.Muted, onClick = { onPrimary(cat.id) })
+                        }
+                        Box(
+                            Modifier.size(28.dp).clip(CircleShape).background(if (on) Eazy.Ink else Eazy.Paper)
+                                .border(2.dp, if (on) Eazy.Ink else Eazy.Dash, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) { if (on) Ico(R.drawable.ic_check, 15.dp, tint = Eazy.Paper, contentDescription = "Gekozen") }
                     }
                 }
             }
+            BigPillButton("Klaar", R.drawable.ic_check, (selected.firstOrNull()?.let { id -> categories.firstOrNull { it.id == id }?.context?.vivid }) ?: Eazy.Brand, onDismiss, Modifier.padding(top = 12.dp))
         }
     }
 }

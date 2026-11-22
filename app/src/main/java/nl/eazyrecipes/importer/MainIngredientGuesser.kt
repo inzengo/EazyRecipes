@@ -17,6 +17,7 @@ object MainIngredientGuesser {
         "vis", "zalm", "tonijn", "kabeljauw", "garnaal", "garnalen", "mosselen", "kibbeling", "pangasius",
         "tilapia", "makreel", "haring", "forel", "scampi", "inktvis", "ansjovis", "schelvis", "koolvis",
         "zeebaars", "dorade", "krab", "kreeft", "sardine", "fish", "salmon", "tuna", "shrimp", "prawn",
+        "gamba", "mossel", "calamari", "octopus", "zeevruchten", "vongole", "kokkel", "coquille", "sint-jakobsschelp", "heilbot", "tong",
     )
 
     private val meat = listOf(
@@ -35,20 +36,36 @@ object MainIngredientGuesser {
         diets: List<String>,
         keywords: List<String>,
         ingredients: List<String>,
-    ): MainIngredient {
+    ): MainIngredient = guessAll(category, diets, keywords, ingredients).first()
+
+    /**
+     * Alle soorten die passen, de belangrijkste eerst. Vis én vlees (paella met chorizo) geeft beide;
+     * de rest is er één: zoet, vegan, vega.
+     */
+    fun guessAll(
+        category: String?,
+        diets: List<String>,
+        keywords: List<String>,
+        ingredients: List<String>,
+    ): List<MainIngredient> {
         val cat = category.orEmpty().lowercase()
-        if (sweetCategory.any { it in cat }) return MainIngredient.ZOET
+        if (sweetCategory.any { it in cat }) return listOf(MainIngredient.ZOET)
 
         val d = diets.joinToString(" ").lowercase()
-        if ("vegandiet" in d) return MainIngredient.VEGAN
+        if ("vegandiet" in d) return listOf(MainIngredient.VEGAN)
         val kw = keywords.joinToString(" ").lowercase()
-        if ("vegan" in kw) return MainIngredient.VEGAN
+        if ("vegan" in kw) return listOf(MainIngredient.VEGAN)
 
         val haystack = (keywords + ingredients).joinToString(" | ").lowercase().replace(vegaQualified, " ")
-        if (fish.any { haystack.containsWord(it) }) return MainIngredient.VIS
-        if ("vegetariandiet" in d) return MainIngredient.VEGA
-        if (meat.any { haystack.containsWord(it) }) return MainIngredient.VLEES
-        return MainIngredient.VEGA
+        val hasFish = fish.any { haystack.containsWord(it) }
+        if (!hasFish && "vegetariandiet" in d) return listOf(MainIngredient.VEGA)
+        val hasMeat = meat.any { haystack.containsWord(it) }
+        return when {
+            hasFish && hasMeat -> listOf(MainIngredient.VIS, MainIngredient.VLEES)
+            hasFish -> listOf(MainIngredient.VIS)
+            hasMeat -> listOf(MainIngredient.VLEES)
+            else -> listOf(MainIngredient.VEGA)
+        }
     }
 
     /** Begin van een woord moet matchen ("kip" in "kipfilet" wel, in "ketchup" niet). */

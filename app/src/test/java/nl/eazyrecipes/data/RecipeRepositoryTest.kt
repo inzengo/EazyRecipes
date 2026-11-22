@@ -40,7 +40,7 @@ class RecipeRepositoryTest {
         title = "Kip kerrie",
         sourceUrl = "https://www.leukerecepten.nl/recepten/kip-kerrie/",
         totalMinutes = 30,
-        categoryId = "vlees",
+        categoryIds = listOf("vlees"),
         tags = listOf("Kip", "Crème fraîche"),
         ingredients = listOf("150 gr rijst", "200 gr kipfilet", "125 ml crème fraîche"),
         steps = listOf(ParsedStep("Kook de rijst.", "Bereiding"), ParsedStep("Bak de kip.", "Bereiding")),
@@ -98,9 +98,9 @@ class RecipeRepositoryTest {
         val soep = repo.createCategory("  Soep ", "aqua", "bowl-steam")
         with(repo.observeCategories().first().last()) { assertEquals(soep, id); assertEquals("Soep", name); assertEquals(5, position) }
 
-        val id = repo.save(kipKerrie.copy(categoryId = soep))
+        val id = repo.save(kipKerrie.copy(categoryIds = listOf(soep)))
         assertEquals(soep, repo.get(id)!!.recipe.categoryId)
-        assertNull("onbekende categorie wordt geen soort", repo.get(repo.save(kipKerrie.copy(categoryId = "bestaat-niet")))!!.recipe.categoryId)
+        assertNull("onbekende categorie wordt geen soort", repo.get(repo.save(kipKerrie.copy(categoryIds = listOf("bestaat-niet"))))!!.recipe.categoryId)
 
         repo.updateCategory(soep, "Soepen", "oranje", "cooking-pot")
         with(repo.observeCategories().first().first { it.id == soep }) { assertEquals("Soepen", name); assertEquals("oranje", color); assertEquals("cooking-pot", icon) }
@@ -118,7 +118,7 @@ class RecipeRepositoryTest {
         // Standaardcategorie weg en opnieuw "Vlees" maken: dezelfde (vaste) id komt terug, dus de import-gok werkt weer.
         repo.deleteCategory("vlees")
         assertEquals("vlees", repo.createCategory("vlees", "koraal", "cow"))
-        assertEquals("vlees", repo.get(repo.save(kipKerrie.copy(categoryId = "vlees")))!!.recipe.categoryId)
+        assertEquals("vlees", repo.get(repo.save(kipKerrie.copy(categoryIds = listOf("vlees"))))!!.recipe.categoryId)
     }
 
     @Test
@@ -186,6 +186,25 @@ class RecipeRepositoryTest {
     }
 
     @Test
+    fun `meerdere categorieen - eerste is hoofdsoort, verwijderen schuift door`() = runTest {
+        val paella = repo.save(ParsedRecipe(title = "Paella", categoryIds = listOf("vis", "vlees", "bestaat-niet")))
+        with(repo.get(paella)!!) { assertEquals("vis", recipe.categoryId); assertEquals(listOf("vis", "vlees"), categoryIds) }
+        assertEquals(mapOf(paella to setOf("vis", "vlees")), repo.observeRecipeCategories().first())
+
+        // Bewerken: hoofdsoort wisselen en een soort weghalen.
+        repo.update(paella, repo.get(paella)!!.toDraft().copy(categoryIds = listOf("vlees")))
+        with(repo.get(paella)!!) { assertEquals("vlees", recipe.categoryId); assertEquals(listOf("vlees"), categoryIds) }
+        repo.update(paella, repo.get(paella)!!.toDraft().copy(categoryIds = listOf("vlees", "vis")))
+
+        // Hoofdsoort verwijderen: de andere soort neemt het over.
+        now = 9_000L
+        repo.deleteCategory("vlees")
+        with(repo.get(paella)!!) { assertEquals("vis", recipe.categoryId); assertEquals(listOf("vis"), categoryIds); assertEquals(9_000L, recipe.updatedAt) }
+        repo.deleteCategory("vis")
+        with(repo.get(paella)!!) { assertNull(recipe.categoryId); assertEquals(emptyList<String>(), categoryIds) }
+    }
+
+    @Test
     fun `notitie en omslagfoto opslaan werkt updatedAt bij`() = runTest {
         val id = repo.save(kipKerrie)
         now = 2_000L
@@ -237,7 +256,7 @@ class RecipeRepositoryTest {
             id,
             draft.copy(
                 title = "Kip kerrie van mama",
-                categoryId = "vis",
+                categoryIds = listOf("vis"),
                 ingredients = listOf("300 gr kipdijfilet", "kokosmelk"),
                 steps = listOf(ParsedStep("Alles in de pan.")),
             ),

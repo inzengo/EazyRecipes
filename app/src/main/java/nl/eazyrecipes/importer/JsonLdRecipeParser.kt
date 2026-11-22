@@ -88,14 +88,12 @@ object JsonLdRecipeParser {
             totalMinutes = total,
             category = category,
             cuisine = cuisine,
-            categoryId = DefaultCategories.idFor(
-                MainIngredientGuesser.guess(
+            categoryIds = MainIngredientGuesser.guessAll(
                     category = category,
                     diets = r["suitableForDiet"].strings(),
                     keywords = keywords,
                     ingredients = ingredients,
-                )
-            ),
+                ).mapNotNull(DefaultCategories::idFor),
             tags = tags,
             ingredients = ingredients,
             steps = steps,

@@ -48,12 +48,13 @@ class RecipeRepository(
                 totalMinutes = parsed.totalMinutes,
                 category = parsed.category,
                 cuisine = parsed.cuisine,
-                categoryId = activeCategory(parsed.categoryId),
+                categoryId = null, // zie setCategories hieronder
                 createdAt = now,
                 updatedAt = now,
             )
         )
         insertChildren(id, parsed, now)
+        setCategories(id, parsed.categoryIds, now)
         val tagIds = parsed.tags.map { name -> labelId(name, now) }.distinct()
         dao.insertRecipeTags(tagIds.map { RecipeTagEntity(id, it, now, now) })
         dao.insertFts(
@@ -83,10 +84,10 @@ class RecipeRepository(
                 prepMinutes = edited.prepMinutes,
                 cookMinutes = edited.cookMinutes,
                 totalMinutes = edited.totalMinutes,
-                categoryId = activeCategory(edited.categoryId),
                 updatedAt = now,
             )
         )
+        setCategories(id, edited.categoryIds, now)
         dao.deleteIngredients(id)
         dao.deleteSteps(id)
         insertChildren(id, edited, now)
@@ -114,6 +115,7 @@ class RecipeRepository(
             steps = d.steps.filter { it.deletedAt == null }.sortedBy { it.position },
             tags = dao.tagNames(id),
             labels = dao.labelsOf(id),
+            categoryIds = dao.categoriesOf(id).let { all -> listOfNotNull(d.recipe.categoryId).filter { it in all } + all.filter { it != d.recipe.categoryId } },
         )
     }
 
@@ -251,8 +253,21 @@ class RecipeRepository(
 
     // --- categorieën ---
 
-    /** Alleen een bestaande (niet-verwijderde) categorie; anders geen soort. */
-    private suspend fun activeCategory(id: String?): String? = id?.let { dao.category(it)?.id }
+    /**
+     * Zet de categorieën van een recept: [ids] in volgorde, de eerste (bestaande) wordt de hoofdsoort.
+     * Onbekende of verwijderde categorieën vallen weg.
+     */
+    private suspend fun setCategories(recipeId: String, ids: List<String>, now: Long) {
+        val active = ids.distinct().filter { dao.category(it) != null }
+        dao.insertRecipeCategories(active.map { RecipeCategoryEntity(recipeId, it, now, now) }) // bestaande: genegeerd
+        active.forEach { dao.reviveRecipeCategory(recipeId, it, now) }
+        dao.removeOtherCategories(recipeId, active.ifEmpty { listOf("") }, now)
+        dao.recipe(recipeId)?.let { r -> if (r.categoryId != active.firstOrNull()) dao.updateRecipe(r.copy(categoryId = active.firstOrNull(), updatedAt = now)) }
+    }
+
+    /** Per recept de ids van zijn categorieën (voor het filter: een recept staat onder elke tegel van zijn soorten). */
+    fun observeRecipeCategories(): Flow<Map<String, Set<String>>> =
+        dao.observeRecipeCategories().map { rows -> rows.groupBy({ it.recipeId }, { it.categoryId }).mapValues { it.value.toSet() } }
 
     fun observeCategories(): Flow<List<CategoryEntity>> = dao.observeCategories()
 
@@ -280,11 +295,13 @@ class RecipeRepository(
         dao.updateCategory(old.copy(name = name.trim(), color = color, icon = icon, updatedAt = clock()))
     }
 
-    /** Verwijdert de categorie; haar recepten blijven bestaan, zonder soort. */
+    /** Verwijdert de categorie; haar recepten blijven, met hun andere soort als hoofdsoort (of zonder soort). */
     suspend fun deleteCategory(id: String) = db.withTransaction {
         val now = clock()
+        dao.touchRecipesInCategory(id, now)
         dao.softDeleteCategory(id, now)
-        dao.clearCategory(id, now)
+        dao.softDeleteCategoryLinks(id, now)
+        dao.reassignPrimary(id, now)
     }
 
     /** Eén plek naar voren (-1) of naar achteren (+1) in de volgorde. */
@@ -357,6 +374,8 @@ data class RecipeDetails(
     val tags: List<String>,
     /** Labels als entiteit (kleur, verborgen), voor het receptscherm. */
     val labels: List<TagEntity> = emptyList(),
+    /** Alle categorieën, hoofdsoort eerst. */
+    val categoryIds: List<String> = listOfNotNull(recipe.categoryId),
 ) {
     /** Als bewerkbaar concept voor de editor. */
     fun toDraft(): ParsedRecipe = ParsedRecipe(
@@ -371,7 +390,7 @@ data class RecipeDetails(
         totalMinutes = recipe.totalMinutes,
         category = recipe.category,
         cuisine = recipe.cuisine,
-        categoryId = recipe.categoryId,
+        categoryIds = categoryIds,
         tags = tags,
         ingredients = ingredients.map { it.raw },
         steps = steps.map { ParsedStep(it.text, it.sectionName) },
