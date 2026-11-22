@@ -75,6 +75,8 @@ fun HomeScreen(
     onOpenCategories: () -> Unit = {},
     onOpenLabels: () -> Unit = {},
     onOpenFile: (android.net.Uri) -> Unit = {},
+    onImportMany: (List<String>) -> Unit = {},
+    onOpenBookmarks: (android.net.Uri) -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -106,7 +108,7 @@ fun HomeScreen(
             )
             HomeTab.PANTRY -> pantry()
             HomeTab.DISCOVER -> DiscoverScreen()
-            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels, onOpenFile)
+            HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels, onOpenFile, onOpenBookmarks)
         }
         BottomNav(tab, accent, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -117,6 +119,8 @@ fun HomeScreen(
             savedUrls = state?.savedUrls.orEmpty(),
             onDismiss = { text -> draft = text; addOpen = false },
             onSubmit = { url -> draft = ""; addOpen = false; onImport(url) },
+            onSubmitMany = { urls -> draft = ""; addOpen = false; onImportMany(urls) },
+            onManual = { draft = ""; addOpen = false; onImport("") },
         )
     }
 }
@@ -232,7 +236,7 @@ private fun SiteRow(letter: String, color: Color, name: String, note: String) {
 }
 
 @Composable
-private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, onOpenFile: (android.net.Uri) -> Unit) {
+private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, onOpenFile: (android.net.Uri) -> Unit, onOpenBookmarks: (android.net.Uri) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
@@ -262,6 +266,7 @@ private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, o
         }
     }
     val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenFile) }
+    val openBookmarks = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(onOpenBookmarks) }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 120.dp),
@@ -270,6 +275,9 @@ private fun MoreScreen(onOpenCategories: () -> Unit, onOpenLabels: () -> Unit, o
             Text("Meer", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(bottom = 12.dp))
             MoreRow(R.drawable.ph_bowl_food, Color(0xFFFF8A3D), "Categorieën", "Namen, kleuren en iconen", onOpenCategories)
             MoreRow(R.drawable.ph_tag, Color(0xFF3FD0F0), "Labels", "Kleuren, samenvoegen, verbergen", onOpenLabels)
+            MoreRow(R.drawable.ph_bookmark, Color(0xFF4D9DFF), "Bladwijzers importeren", "Receptlinks uit Chrome, Firefox of Safari") {
+                openBookmarks.launch(arrayOf("text/html", "*/*"))
+            }
             MoreRow(R.drawable.ph_folder, Eazy.Snel.vivid, "Back-up maken", if (busy) "Bezig…" else "Alle recepten, foto's, categorieën en labels in één bestand") {
                 if (!busy) createBackup.launch(Sharing.backupName())
             }

@@ -72,7 +72,7 @@ fun ImportScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     when (val s = state) {
         is ImportUiState.Loading -> LoadingView(url, s.viaBrowser, onClose)
-        is ImportUiState.Failed -> FailedView(s, onRetry = vm::retry, onClose = onClose)
+        is ImportUiState.Failed -> FailedView(s, onRetry = vm::retry, onManual = vm::manual, onClose = onClose)
         is ImportUiState.Editing -> RecipeEditor(
             draft = s.draft,
             imagePath = null,
@@ -112,7 +112,7 @@ private fun LoadingView(url: String, viaBrowser: Boolean, onClose: () -> Unit) {
 }
 
 @Composable
-private fun FailedView(s: ImportUiState.Failed, onRetry: () -> Unit, onClose: () -> Unit) {
+private fun FailedView(s: ImportUiState.Failed, onRetry: () -> Unit, onManual: () -> Unit, onClose: () -> Unit) {
     Column(
         Modifier.fillMaxSize().background(Eazy.Grey).statusBarsPadding().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -122,6 +122,7 @@ private fun FailedView(s: ImportUiState.Failed, onRetry: () -> Unit, onClose: ()
         ErrorCard(s.title, s.message) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (s.canRetry) Chip("Opnieuw proberen", null, Eazy.Ink, contentColor = Eazy.Paper, onClick = onRetry)
+                Chip("Zelf invoeren", R.drawable.ph_pencil, Eazy.Brand, onClick = onManual)
                 Chip("Terug", null, Eazy.Grey, onClick = onClose)
             }
         }

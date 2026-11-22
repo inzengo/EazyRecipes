@@ -14,6 +14,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.eazyrecipes.ui.categories.CategoriesScreen
 import nl.eazyrecipes.ui.labels.LabelsScreen
 import nl.eazyrecipes.share.BundleImportScreen
+import nl.eazyrecipes.ui.importflow.BatchScreen
+import nl.eazyrecipes.ui.importflow.BookmarksScreen
+import nl.eazyrecipes.ui.importflow.BookmarksViewModel
 import nl.eazyrecipes.share.BundleImportViewModel
 import nl.eazyrecipes.ui.labels.LabelsViewModel
 import nl.eazyrecipes.ui.categories.CategoriesViewModel
@@ -98,6 +101,8 @@ class MainActivity : ComponentActivity() {
                             onOpenCategories = { nav.navigate(Routes.CATEGORIES) },
                             onOpenLabels = { nav.navigate(Routes.LABELS) },
                             onOpenFile = { nav.navigate(Routes.bundle(it)) },
+                            onImportMany = { urls -> c.batch.enqueue(urls); nav.navigate(Routes.BATCH) },
+                            onOpenBookmarks = { nav.navigate(Routes.bookmarks(it)) },
                             pantry = {
                                 val vm = viewModel { PantryViewModel(c.repository, getSharedPreferences("pantry", MODE_PRIVATE)) }
                                 PantryScreen(vm, onOpen = { nav.navigate(Routes.recipe(it)) })
@@ -106,7 +111,7 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(
                         Routes.IMPORT,
-                        arguments = listOf(navArgument("url") { type = NavType.StringType }),
+                        arguments = listOf(navArgument("url") { type = NavType.StringType; defaultValue = "" }),
                     ) { entry ->
                         val url = entry.arguments?.getString("url").orEmpty()
                         val vm = viewModel { ImportViewModel(url, c.importer, c.repository, c.images) }
@@ -133,6 +138,33 @@ class MainActivity : ComponentActivity() {
                         val uri = Uri.parse(entry.arguments?.getString("uri").orEmpty())
                         val vm = viewModel { BundleImportViewModel({ contentResolver.openInputStream(uri) }, c.bundles, c.appScope) }
                         BundleImportScreen(vm, onClose = { if (!nav.popBackStack()) finish() })
+                    }
+                    composable(Routes.BATCH) {
+                        val items by c.batch.items.collectAsStateWithLifecycle()
+                        BatchScreen(
+                            items,
+                            onOpen = { nav.navigate(Routes.recipe(it)) },
+                            onRetry = c.batch::retryFailed,
+                            onDone = { c.batch.clearFinished(); nav.popBackStack() },
+                        )
+                    }
+                    composable(
+                        Routes.BOOKMARKS,
+                        arguments = listOf(navArgument("uri") { type = NavType.StringType }),
+                    ) { entry ->
+                        val uri = Uri.parse(entry.arguments?.getString("uri").orEmpty())
+                        val vm = viewModel { BookmarksViewModel({ contentResolver.openInputStream(uri) }) }
+                        val state by vm.state.collectAsStateWithLifecycle()
+                        val saved by c.repository.observeLibrary().collectAsStateWithLifecycle(emptyList())
+                        BookmarksScreen(
+                            state,
+                            savedUrls = saved.mapNotNull { it.sourceUrl }.toSet(),
+                            selected = vm.selected,
+                            onToggle = vm::toggle,
+                            onSetAll = vm::setAll,
+                            onImport = { urls -> c.batch.enqueue(urls); nav.navigate(Routes.BATCH) { popUpTo(Routes.LIBRARY) } },
+                            onClose = { nav.popBackStack() },
+                        )
                     }
                     composable(Routes.LABELS) {
                         val vm = viewModel { LabelsViewModel(c.repository) }
@@ -181,6 +213,9 @@ private object Routes {
     const val COOK = "recipe/{id}/cook"
     const val CATEGORIES = "categories"
     const val LABELS = "labels"
+    const val BATCH = "batch"
+    const val BOOKMARKS = "bookmarks?uri={uri}"
+    fun bookmarks(uri: Uri) = "bookmarks?uri=${Uri.encode(uri.toString())}"
     const val BUNDLE = "bundle?uri={uri}"
     fun bundle(uri: Uri) = "bundle?uri=${Uri.encode(uri.toString())}"
     fun import(url: String) = "import?url=${Uri.encode(url)}"

@@ -38,9 +38,15 @@ class ImportViewModel(
     private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Loading())
     val state: StateFlow<ImportUiState> = _state.asStateFlow()
 
-    init { load() }
+    /** Zonder link: zelf invoeren (leeg concept). */
+    init { if (url.isBlank()) _state.value = ImportUiState.Editing(ParsedRecipe(title = "")) else load() }
 
     fun retry() = load()
+
+    /** Geen leesbaar recept op de pagina: dan zelf invullen, met de link als bron. */
+    fun manual() {
+        _state.value = ImportUiState.Editing(ParsedRecipe(title = "", sourceUrl = RecipeImporter.cleanUrl(url)))
+    }
 
     private fun load() {
         _state.value = ImportUiState.Loading()
@@ -83,7 +89,7 @@ class ImportViewModel(
             is ImportResult.NoRecipe -> ImportUiState.Failed(
                 "Geen recept gevonden",
                 "Deze pagina laadt wel, maar we vinden er geen recept op. Sommige sites zetten hun recepten niet in een " +
-                    "leesbaar formaat. Later kun je zo'n recept ook via een foto of handmatig toevoegen.",
+                    "leesbaar formaat. Je kunt het wel zelf invoeren; de link bewaren we als bron.",
                 canRetry = false,
             )
             is ImportResult.Failed -> when (result.reason) {

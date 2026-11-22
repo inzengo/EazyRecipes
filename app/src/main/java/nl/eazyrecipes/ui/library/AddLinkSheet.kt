@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -36,7 +37,14 @@ import nl.eazyrecipes.ui.components.BigPillButton
 import nl.eazyrecipes.ui.components.Ico
 import nl.eazyrecipes.ui.theme.Eazy
 
-internal fun linkIn(text: String): String? = Regex("""https?://\S+""").find(text)?.value
+/** Links in vrije tekst: ook HOOFDLETTERS, zonder afsluitende leestekens ("(zie https://x.nl/r).") . */
+internal fun linksIn(text: String): List<String> =
+    Regex("""(?i)https?://[^\s<>"'\])]+""").findAll(text).map { it.value.trimEnd('.', ',', ';', ':', '!', '?') }.toList()
+
+internal fun linkIn(text: String): String? = linksIn(text).firstOrNull()
+
+/** Wat "Plakken" in het veld zet: één link, of bij een lijst alle links onder elkaar. */
+internal fun pasteText(clip: String): String = linksIn(clip).distinct().let { if (it.size > 1) it.joinToString("\n") else it.firstOrNull() ?: clip.trim() }
 
 /**
  * Wat staat er al in het veld als "link plakken" opent?
@@ -46,19 +54,30 @@ internal fun linkIn(text: String): String? = Regex("""https?://\S+""").find(text
  */
 internal fun initialLinkText(draft: String, clipboard: String?, savedUrls: Set<String>): String {
     if (draft.isNotBlank()) return draft
-    val link = clipboard?.let(::linkIn) ?: return ""
+    val all = clipboard?.let(::linksIn).orEmpty().distinct()
+    if (all.size > 1) return all.joinToString("\n") // een lijst: de wachtrij slaat bestaande zelf over
+    val link = all.firstOrNull() ?: return ""
     val clean = RecipeImporter.cleanUrl(link) ?: return ""
     return if (clean in savedUrls) "" else link
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddLinkSheet(draft: String, savedUrls: Set<String>, onDismiss: (String) -> Unit, onSubmit: (String) -> Unit) {
+fun AddLinkSheet(
+    draft: String,
+    savedUrls: Set<String>,
+    onDismiss: (String) -> Unit,
+    onSubmit: (String) -> Unit,
+    onSubmitMany: (List<String>) -> Unit = {},
+    onManual: () -> Unit = {},
+) {
     val context = LocalContext.current
     // Wat we automatisch invulden; dat bewaren we niet als "jouw tekst" bij per ongeluk sluiten.
     var prefilled by remember { mutableStateOf("") }
     var text by remember { mutableStateOf(draft) }
-    val valid = RecipeImporter.cleanUrl(text) != null
+    // Eén link, of een geplakte lijst (één per regel, of gewoon ergens in de tekst).
+    val links = linksIn(text).mapNotNull { RecipeImporter.cleanUrl(it) }.distinct()
+    val valid = links.isNotEmpty()
     val focus = remember { FocusRequester() }
 
     ModalBottomSheet(onDismissRequest = { onDismiss(if (text == prefilled) "" else text) }, containerColor = Eazy.Paper) {
@@ -75,26 +94,35 @@ fun AddLinkSheet(draft: String, savedUrls: Set<String>, onDismiss: (String) -> U
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("Recept toevoegen", style = MaterialTheme.typography.headlineSmall)
-            Text("Plak de link van een receptpagina.", style = MaterialTheme.typography.bodyMedium, color = Eazy.Muted)
+            Text("Plak de link van een receptpagina, of een hele lijst (één per regel).", style = MaterialTheme.typography.bodyMedium, color = Eazy.Muted)
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 placeholder = { Text("https://…") },
-                singleLine = true,
+                // Altijd meerregelig: Enter = nieuwe regel (voor een lijst), ophalen gaat met de knop.
+                singleLine = false,
+                maxLines = 6,
                 shape = MaterialTheme.shapes.medium,
                 leadingIcon = { Ico(R.drawable.ic_link, 20.dp) },
                 trailingIcon = {
                     // Vangnet als automatisch invullen niet lukt: één tik, en dan mag Android het klembord altijd lezen.
                     if (text.isEmpty()) TextButton(onClick = {
-                        readClipboard(context)?.let { clip -> text = linkIn(clip) ?: clip.trim() }
+                        readClipboard(context)?.let { clip -> text = pasteText(clip) }
                     }) { Text("Plakken", style = MaterialTheme.typography.labelLarge, color = Eazy.Ink) }
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                keyboardActions = KeyboardActions(onGo = { if (valid) onSubmit(text.trim()) }),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Default),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Eazy.Ink, cursorColor = Eazy.Ink),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
-            BigPillButton("Recept ophalen", R.drawable.ph_sparkle, Eazy.Brand, onClick = { onSubmit(text.trim()) }, enabled = valid)
+            BigPillButton(
+                if (links.size > 1) "${links.size} recepten ophalen" else "Recept ophalen",
+                R.drawable.ph_sparkle, Eazy.Brand,
+                onClick = { if (links.size > 1) onSubmitMany(links) else onSubmit(links.single()) },
+                enabled = valid,
+            )
+            TextButton(onClick = onManual, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text("Geen link? Voer een recept zelf in", style = MaterialTheme.typography.labelLarge, color = Eazy.Ink)
+            }
         }
     }
 }
