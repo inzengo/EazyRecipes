@@ -164,6 +164,23 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
 1. **Alles op de telefoon testen** (fase 3–6, APK v0.7.1). Getest op 2026-11-24 (v0.6.0): alles werkt, behalve tekst delen naar Discord (opgelost in 0.6.1, nog nakijken). Nieuw sinds die test: boodschappenlijst, navigatie zonder Ontdek. Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
 2. Bevindingen van de test oplossen, daarna de volgende fase kiezen uit [PLAN.md](PLAN.md#later).
 
+## Geparkeerd (2026-11-24)
+
+- **Google Play met advertenties.** Nodig:
+  - ontwikkelaarsaccount ($25), en bij een nieuw persoonlijk account eerst een gesloten test met 12 testers gedurende 14 dagen;
+  - bij inkomsten in de EU worden naam, adres en telefoon openbaar, dus liever eerst een eenmanszaak (KvK);
+  - privacybeleid, Data safety, leeftijdsclassificatie;
+  - **targetSdk 36** (verplicht sinds 31-08-2026, de app staat nog op 35), een release-sleutel en een AAB;
+  - de timer-service is van het type `specialUse`: daarvoor moet je een verklaring indienen, en dat is een afwijsrisico;
+  - AdMob met een gecertificeerd toestemmingsvenster (UMP).
+  - Verdienen: advertenties alleen leveren weinig op (Nederlandstalig, kleine markt). Beter: rustige advertenties plus een eenmalige aankoop "Zonder advertenties". Google rekent 10% over de eerste $1M en 5% voor Play Billing.
+- **Uitgebreid testen door Claude:**
+  - 30–50 echte receptensites importeren (testprogramma);
+  - binnenkomende links uit Pinterest, Instagram, TikTok, YouTube (korte links en doorverwijzingen);
+  - deellimieten per app (Instagram DM ±1000, Telegram 4096, Discord 2000 tekens);
+  - `.eazy` openen uit WhatsApp, Gmail en Drive: de app accepteert nu alleen `octet-stream`/`zip`;
+  - met een emulator op E: (±3–4 GB): Cloudflare-sites, kookmodus, timers, app die door Android wordt afgesloten.
+
 ## Open punten
 
 - Gradle-geheugen is verhoogd naar `-Xmx2g` / 1 GB metaspace. Dat is getest met een `clean` + build + tests.
