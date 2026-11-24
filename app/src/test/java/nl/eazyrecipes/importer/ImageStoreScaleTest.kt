@@ -43,6 +43,29 @@ class ImageStoreScaleTest {
     }
 
     @Test
+    fun `grote websitefoto wordt verkleind, in hetzelfde bestand en formaat`() {
+        val dir = tmp.newFolder("images")
+        val big = java.io.File(dir, "a.jpg").also { f ->
+            f.outputStream().use { Bitmap.createBitmap(3000, 2000, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.JPEG, 95, it) }
+        }
+        val small = java.io.File(dir, "b.png").also { f ->
+            f.outputStream().use { Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        val notImage = java.io.File(dir, "c.jpg").apply { writeText("geen foto") }
+        val store = ImageStore(dir)
+
+        // Alleen de grote wordt aangepast; kapotte of kleine bestanden blijven zoals ze waren.
+        assertEquals(1, store.shrinkAll())
+        fun size(f: java.io.File) = BitmapFactory.Options().apply { inJustDecodeBounds = true }.also { BitmapFactory.decodeFile(f.path, it) }
+        with(size(big)) { assertEquals(1200, outWidth); assertEquals(800, outHeight); assertEquals("image/jpeg", outMimeType) }
+        with(size(small)) { assertEquals(800, outWidth); assertEquals("image/png", outMimeType) }
+        assertEquals("geen foto", notImage.readText())
+        assertEquals(listOf("a.jpg", "b.png", "c.jpg"), dir.list()!!.sorted())
+        // Nog een keer: er is niets meer te doen.
+        assertEquals(0, store.shrinkAll())
+    }
+
+    @Test
     fun `geen afbeelding geeft null`() = runBlocking {
         val notImage = tmp.newFile("tekst.png").apply { writeText("geen foto") }
         assertNull(ImageStore(tmp.newFolder("images")).saveFromUri(resolver, Uri.fromFile(notImage)))

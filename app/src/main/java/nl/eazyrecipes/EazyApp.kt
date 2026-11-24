@@ -11,6 +11,7 @@ import nl.eazyrecipes.importer.WebViewPageFetcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 
 class EazyApp : Application() {
@@ -30,6 +31,21 @@ class AppContainer(context: Context) {
     val pantry = nl.eazyrecipes.ui.pantry.PantryStore(context.getSharedPreferences("pantry", Context.MODE_PRIVATE))
     /** Voor schrijfacties die niet mogen stoppen als een scherm (en zijn ViewModel) verdwijnt, zoals een notitie opslaan. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    init {
+        // Eenmalig (v0.7.2): foto's van vóór het verkleinen tot 1200 px kleiner maken; dat maakt scrollen sneller.
+        val prefs = context.getSharedPreferences("upgrades", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(SHRUNK_IMAGES, false)) {
+            appScope.launch(Dispatchers.IO) {
+                images.shrinkAll()
+                prefs.edit().putBoolean(SHRUNK_IMAGES, true).apply()
+            }
+        }
+    }
+
+    private companion object {
+        const val SHRUNK_IMAGES = "images_shrunk_1200"
+    }
 }
 
 val Context.container: AppContainer get() = (applicationContext as EazyApp).container

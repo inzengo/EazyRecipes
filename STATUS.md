@@ -18,7 +18,7 @@ _Laatst bijgewerkt: 2026-11-24_
 ## Wat er nu is
 
 - **Repo:** Kotlin + Jetpack Compose-skelet (`app/`). Het delen-menu ("Delen → EazyRecipes") vangt al een link op en toont die.
-- **APK:** `assembleDebug` werkt. Output: `E:\DevTools\builds\EazyRecipes\app\outputs\apk\debug\app-debug.apk`.
+- **APK:** voor op de telefoon `./gradlew assembleFast` → `E:\DevTools\builds\EazyRecipes\app\outputs\apk\fast\app-fast.apk` (niet debuggable, dus echte snelheid; debug-sleutel, installeert over de debug-app heen). `assembleDebug` → `...\apk\debug\app-debug.apk` is merkbaar trager bij scrollen.
   Nog **niet** op een telefoon getest.
 - **Datamodel (Room 2.7, KSP2), schema v5:** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, category, recipe_category, plus de FTS4-index `recipe_fts`. Migraties v1 → v2 → v3 → v4 in `EazyDatabase.kt` (getest met een echte v1-database uit `app/schemas/.../1.json`, `MigrationTest`). Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
   Zoeken: elk woord als prefix ("kipf" vindt "kipfilet"), zonder accenten ("creme" vindt "crème"). Schema-export staat in `app/schemas/`.
@@ -26,7 +26,7 @@ _Laatst bijgewerkt: 2026-11-24_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 152 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 155 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -158,6 +158,7 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
   - In huis: "Op de lijst" bij elk passend recept.
   - Screenshots: `08c-pantry-list-buttons.png`, `13-shopping.png`, `13b-shopping-empty.png`, `02d-nav-shopping.png`, `02e-nav-pantry.png`.
   - Bekend: twee keer heel snel op + bij porties kan als één tik tellen.
+- **Snelheid (v0.7.2):** foto's van websites en uit .eazy worden verkleind tot 1200 px (`ImageStore.shrink`; bestaande foto's eenmalig bij het opstarten). Het toetsenbord-sluiten bij scrollen hertekent het scherm niet meer. Build-variant `fast` om echte snelheid te testen.
 
 ## Volgende stap
 

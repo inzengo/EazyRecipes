@@ -35,18 +35,53 @@ class ImageStore(
                 val name = UUID.randomUUID().toString()
                 val tmp = File(dir, "$name.part")
                 val target = File(dir, "$name.$ext")
-                if (body.byteStream().use { copyLimited(it, tmp) } && tmp.renameTo(target)) target
+                if (body.byteStream().use { copyLimited(it, tmp) } && tmp.renameTo(target)) target.also { shrink(it) }
                 else { tmp.delete(); null }
             }
         }.getOrNull()
     }
 
     /**
+     * Verkleint een opgeslagen foto tot hoogstens [maxSide] px, in hetzelfde bestand en formaat. Websites leveren vaak
+     * 2000-4000 px; een kaart in de bibliotheek is ±500 px en de grote foto op het receptscherm ±1200 px breed.
+     * Grote bestanden maken scrollen traag (elke foto moet uitgepakt worden). Mislukt het, dan blijft het origineel staan.
+     * @return true als het bestand kleiner is gemaakt.
+     */
+    fun shrink(file: File, maxSide: Int = MAX_SIDE): Boolean = runCatching {
+        val format = when (file.extension.lowercase()) {
+            "jpg", "jpeg" -> Bitmap.CompressFormat.JPEG
+            "png" -> Bitmap.CompressFormat.PNG
+            @Suppress("DEPRECATION")
+            "webp" -> if (Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP
+            else -> return@runCatching false // gif (bewegend), avif: laten staan
+        }
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.path, bounds)
+        val longest = maxOf(bounds.outWidth, bounds.outHeight)
+        if (longest <= maxSide) return@runCatching false
+        var sample = 1
+        while (longest / (sample * 2) >= maxSide) sample *= 2
+        val decoded = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return@runCatching false
+        val scale = maxSide.toDouble() / maxOf(decoded.width, decoded.height)
+        val bitmap = if (scale >= 1.0) decoded
+        else Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true)
+        val tmp = File(file.parentFile, file.name + ".part")
+        val ok = tmp.outputStream().use { bitmap.compress(format, 85, it) }
+        if (!ok) { tmp.delete(); return@runCatching false }
+        // Vervangen in één stap (renameTo overschrijft niet op elk platform).
+        java.nio.file.Files.move(tmp.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        true
+    }.getOrDefault(false)
+
+    /** Eenmalig: alle al opgeslagen foto's verkleinen (van vóór [shrink] bestond). @return hoeveel er kleiner zijn gemaakt. */
+    fun shrinkAll(): Int = dir.listFiles().orEmpty().filter { it.isFile && !it.name.endsWith(".part") }.count { shrink(it) }
+
+    /**
      * Slaat een foto uit de galerij op als JPEG van maximaal [maxSide] px, rechtop gedraaid (EXIF).
      * Telefoonfoto's zijn vaak 4000 px en 5-10 MB; voor een omslag is dat zonde van de opslag.
      * @return het lokale bestand, of `null` als het geen leesbare afbeelding is.
      */
-    suspend fun saveFromUri(resolver: ContentResolver, uri: Uri, maxSide: Int = 1600): File? = withContext(Dispatchers.IO) {
+    suspend fun saveFromUri(resolver: ContentResolver, uri: Uri, maxSide: Int = MAX_SIDE): File? = withContext(Dispatchers.IO) {
         runCatching {
             val bitmap = if (Build.VERSION.SDK_INT >= 28) {
                 ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
@@ -90,7 +125,7 @@ class ImageStore(
             "image/png" -> "png"; "image/webp" -> "webp"; "image/gif" -> "gif"; "image/jpeg" -> "jpg"; else -> null
         }
         val target = ext?.let { File(dir, "$name.$it") }
-        return if (target != null && bounds.outWidth > 0 && tmp.renameTo(target)) target else null
+        return if (target != null && bounds.outWidth > 0 && tmp.renameTo(target)) target.also { shrink(it) } else null
     }
 
     internal fun saveBitmap(bitmap: Bitmap): File? {
@@ -114,6 +149,11 @@ class ImageStore(
             n = input.read(buf)
         }
         true
+    }
+
+    companion object {
+        /** Breed genoeg voor de grote foto op het receptscherm (393 dp × 3). */
+        const val MAX_SIDE = 1200
     }
 
     /** Verwijdert alleen bestanden in onze eigen map. */

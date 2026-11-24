@@ -13,8 +13,8 @@ android {
         applicationId = "nl.eazyrecipes"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.7.1"
+        versionCode = 11
+        versionName = "0.7.2"
         // Alleen moderne telefoons: het ML Kit-leesmodel zit er per processorsoort in (57 MB → veel minder).
         // Gevolg: de APK draait niet in een x86-emulator op de pc.
         ndk { abiFilters += "arm64-v8a" }
@@ -24,6 +24,15 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
+        // Om op de telefoon te testen met echte snelheid: niet "debuggable" (debug-builds van Compose zijn merkbaar trager,
+        // vooral bij scrollen), wel ondertekend met de debug-sleutel, zodat hij over de debug-app heen installeert en je
+        // recepten blijven staan. Zonder R8: dat kan in release andere fouten geven die we hier niet op een toestel zien.
+        create("fast") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
         }
     }
     compileOptions {

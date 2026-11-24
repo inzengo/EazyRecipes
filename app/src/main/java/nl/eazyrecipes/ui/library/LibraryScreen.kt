@@ -130,7 +130,8 @@ fun LibraryScreen(
     val focus = LocalFocusManager.current
     val grid = rememberLazyStaggeredGridState()
     // Scrollen sluit het toetsenbord: het zoekveld scrolt mee en zou anders onzichtbaar de focus houden.
-    LaunchedEffect(grid.isScrollInProgress) { if (grid.isScrollInProgress) focus.clearFocus() }
+    // Via snapshotFlow: zo hertekent het hele scherm niet bij het begin en einde van elk scrollgebaar.
+    LaunchedEffect(grid) { androidx.compose.runtime.snapshotFlow { grid.isScrollInProgress }.collect { if (it) focus.clearFocus() } }
     val open: (String) -> Unit = { id -> focus.clearFocus(); onOpen(id) }
 
     Box(Modifier.fillMaxSize().background(Eazy.Grey)) {
