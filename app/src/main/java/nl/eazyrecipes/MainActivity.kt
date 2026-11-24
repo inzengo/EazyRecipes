@@ -46,6 +46,12 @@ import nl.eazyrecipes.ui.library.LibraryViewModel
 import nl.eazyrecipes.ui.pantry.PantryScreen
 import nl.eazyrecipes.ui.pantry.PantryViewModel
 import nl.eazyrecipes.ui.theme.EazyTheme
+import nl.eazyrecipes.ui.shopping.KitchenPart
+import nl.eazyrecipes.ui.shopping.KitchenSwitch
+import nl.eazyrecipes.ui.shopping.ShoppingScreen
+import nl.eazyrecipes.ui.shopping.ShoppingViewModel
+import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -106,8 +112,22 @@ class MainActivity : ComponentActivity() {
                             onOpenBookmarks = { nav.navigate(Routes.bookmarks(it)) },
                             onImportPhotos = { nav.navigate(Routes.importPhotos(it)) },
                             pantry = {
-                                val vm = viewModel { PantryViewModel(c.repository, getSharedPreferences("pantry", MODE_PRIVATE)) }
-                                PantryScreen(vm, onOpen = { nav.navigate(Routes.recipe(it)) })
+                                // Keuken: In huis | Boodschappen. Beide kijken naar dezelfde "In huis"-keuze (c.pantry).
+                                val pantryVm = viewModel { PantryViewModel(c.repository, c.pantry) }
+                                val shoppingVm = viewModel { ShoppingViewModel(c.shopping, c.repository, c.pantry) }
+                                var part by rememberSaveable { mutableStateOf(KitchenPart.PANTRY) }
+                                val list by shoppingVm.state.collectAsStateWithLifecycle()
+                                val switch: @androidx.compose.runtime.Composable () -> Unit = { KitchenSwitch(part, list?.toBuy ?: 0) { part = it } }
+                                when (part) {
+                                    KitchenPart.PANTRY -> PantryScreen(
+                                        pantryVm,
+                                        onOpen = { nav.navigate(Routes.recipe(it)) },
+                                        header = switch,
+                                        onList = list?.recipes?.map { it.id }?.toSet().orEmpty(),
+                                        addToList = { id -> c.appScope.launch { c.shopping.addRecipe(id, null) } },
+                                    )
+                                    KitchenPart.SHOPPING -> ShoppingScreen(shoppingVm, onOpenRecipe = { nav.navigate(Routes.recipe(it)) }, header = switch)
+                                }
                             },
                         )
                     }
@@ -136,7 +156,7 @@ class MainActivity : ComponentActivity() {
                         arguments = listOf(navArgument("id") { type = NavType.StringType }),
                     ) { entry ->
                         val id = entry.arguments?.getString("id").orEmpty()
-                        val vm = viewModel { RecipeViewModel(id, c.repository, c.images, c.appScope) }
+                        val vm = viewModel { RecipeViewModel(id, c.repository, c.images, c.appScope, c.shopping) }
                         RecipeScreen(vm, onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.edit(id)) }, onCook = { nav.navigate(Routes.cook(id)) })
                     }
                     composable(
@@ -189,7 +209,7 @@ class MainActivity : ComponentActivity() {
                         val id = entry.arguments?.getString("id").orEmpty()
                         // Zelfde ViewModel als het detailscherm eronder: dan kloppen de gekozen porties.
                         val parent = remember(entry) { nav.getBackStackEntry(Routes.RECIPE) }
-                        val vm = viewModel(parent) { RecipeViewModel(id, c.repository, c.images, c.appScope) }
+                        val vm = viewModel(parent) { RecipeViewModel(id, c.repository, c.images, c.appScope, c.shopping) }
                         CookScreen(vm, onClose = { nav.popBackStack() })
                     }
                     composable(

@@ -196,6 +196,45 @@ class ScreenshotTest {
         nl.eazyrecipes.ui.pantry.PantryScreen(nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, sel), pantryActions)
     }
 
+    @Config(qualifiers = "w393dp-h1400dp-xxhdpi")
+    @Test fun kitchen_pantry_with_switch() = shot("08c-kitchen-pantry") {
+        val sel = nl.eazyrecipes.ui.pantry.PantrySelection(setOf("ui", "knoflook", "eieren", "tomaat", "paprika"))
+        nl.eazyrecipes.ui.pantry.PantryScreen(
+            nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, sel),
+            nl.eazyrecipes.ui.pantry.PantryActions({}, {}, {}, {}, {}, addToList = {}),
+            header = { nl.eazyrecipes.ui.shopping.KitchenSwitch(nl.eazyrecipes.ui.shopping.KitchenPart.PANTRY, 9) {} },
+            onList = setOf(pantryRecipes[1].recipe.id),
+        )
+    }
+
+    private val shoppingActions = nl.eazyrecipes.ui.shopping.ShoppingActions({}, {}, {}, { _, _ -> }, {}, {}, {}, {})
+
+    @Config(qualifiers = "w393dp-h2300dp-xxhdpi")
+    @Test fun shopping_list() = shot("13-shopping") {
+        val list = pantryRecipes.take(4).map { pr ->
+            nl.eazyrecipes.shopping.ShoppingRecipe(pr.recipe.id, pr.recipe.title, 2, if (pr.recipe.title == "Linzensoep") 4 else null, pr.lines.map { it.raw } + listOf("zout en peper"))
+        }
+        val first = nl.eazyrecipes.shopping.ShoppingList.build(list)
+        val state = nl.eazyrecipes.shopping.ShoppingList.build(
+            list,
+            extras = listOf(nl.eazyrecipes.shopping.ExtraItem("x1", "wc-papier", false), nl.eazyrecipes.shopping.ExtraItem("x2", "2 pakken melk", false)),
+            checked = (first.sections.flatMap { it.lines }.filter { it.name == "rijst" || it.name == "citroen" }).map { it.checkKey }.toSet(),
+            pantryKeys = setOf("knoflook"),
+        )
+        nl.eazyrecipes.ui.shopping.ShoppingScreen(
+            state, shoppingActions,
+            header = { nl.eazyrecipes.ui.shopping.KitchenSwitch(nl.eazyrecipes.ui.shopping.KitchenPart.SHOPPING, state.toBuy) {} },
+            expanded = true,
+        )
+    }
+
+    @Test fun shopping_empty() = shot("13b-shopping-empty") {
+        nl.eazyrecipes.ui.shopping.ShoppingScreen(
+            nl.eazyrecipes.shopping.ShoppingList.build(emptyList()), shoppingActions,
+            header = { nl.eazyrecipes.ui.shopping.KitchenSwitch(nl.eazyrecipes.ui.shopping.KitchenPart.SHOPPING, 0) {} },
+        )
+    }
+
     @Test fun pantry_nothing_chosen() = shot("08b-pantry-empty") {
         nl.eazyrecipes.ui.pantry.PantryScreen(nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, nl.eazyrecipes.ui.pantry.PantrySelection()), pantryActions)
     }

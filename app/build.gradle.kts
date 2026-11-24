@@ -13,8 +13,8 @@ android {
         applicationId = "nl.eazyrecipes"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.6.1"
+        versionCode = 9
+        versionName = "0.7.0"
         // Alleen moderne telefoons: het ML Kit-leesmodel zit er per processorsoort in (57 MB → veel minder).
         // Gevolg: de APK draait niet in een x86-emulator op de pc.
         ndk { abiFilters += "arm64-v8a" }

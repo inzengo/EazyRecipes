@@ -128,7 +128,31 @@ class RecipeViewModel(
     private val images: ImageStore,
     /** Voor het opslaan van de notitie: moet doorlopen als dit scherm (en zijn ViewModel) net verdwijnt. */
     private val saveScope: CoroutineScope,
+    private val shopping: nl.eazyrecipes.data.ShoppingRepository? = null,
 ) : ViewModel() {
+
+    /** Staat dit recept op de boodschappenlijst? Dan met deze rij (porties). */
+    val onList: StateFlow<nl.eazyrecipes.data.ShoppingRecipeEntity?> =
+        (shopping?.observeRecipes()?.map { rows -> rows.firstOrNull { it.recipeId == id } } ?: kotlinx.coroutines.flow.flowOf(null))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Knop "Op de lijst": niet op de lijst → erop met de gekozen porties; wel, maar andere porties → bijwerken;
+     * wel, zelfde porties → eraf. @return de melding voor de gebruiker.
+     */
+    fun toggleShopping(): String? {
+        val repo = shopping ?: return null
+        val row = onList.value
+        val n = servings
+        return when {
+            row == null -> { saveScope.launch { repo.addRecipe(id, n) }; "Op je boodschappenlijst" + (n?.let { " ($it ${if (it == 1) "portie" else "porties"})" } ?: "") }
+            listServings(row) != n -> { saveScope.launch { repo.addRecipe(id, n) }; "Porties op je lijst aangepast" }
+            else -> { saveScope.launch { repo.removeRecipe(id) }; "Van je boodschappenlijst gehaald" }
+        }
+    }
+
+    /** Porties op de lijst; `null` daar = zoals in het recept (zo zet "In huis" het erop). */
+    fun listServings(row: nl.eazyrecipes.data.ShoppingRecipeEntity): Int? = row.servings ?: baseServings
     private val _state = MutableStateFlow<DetailState>(DetailState.Loading)
     val state: StateFlow<DetailState> = _state
 
@@ -382,7 +406,19 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
                 }
 
                 if (d.ingredients.isNotEmpty()) Column {
-                    Text("Ingrediënten", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 6.dp))
+                    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Ingrediënten", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                        val listRow by vm.onList.collectAsStateWithLifecycle()
+                        val row = listRow
+                        val (label, icon, bg) = when {
+                            row == null -> Triple("Op de lijst", R.drawable.ic_plus, Eazy.Grey)
+                            vm.listServings(row) != vm.servings -> Triple("Lijst bijwerken", R.drawable.ph_list, ctx.vivid)
+                            else -> Triple("Op je lijst", R.drawable.ic_check, ctx.vivid)
+                        }
+                        Chip(label, icon, bg, onClick = {
+                            vm.toggleShopping()?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        })
+                    }
                     val amounts = parts.map { it.amount(vm.factor) }
                     // Eén kolombreedte voor alle hoeveelheden (de langste), zodat de namen netjes onder elkaar staan.
                     val measurer = rememberTextMeasurer()

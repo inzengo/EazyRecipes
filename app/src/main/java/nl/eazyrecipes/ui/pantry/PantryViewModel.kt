@@ -42,8 +42,11 @@ fun pantryState(recipes: List<PantryRecipe>, sel: PantrySelection): PantryUiStat
     )
 }
 
-/** Wat je hebt aangetikt blijft bewaard (SharedPreferences), ook na het afsluiten van de app. */
-class PantryViewModel(repository: RecipeRepository, private val prefs: SharedPreferences) : ViewModel() {
+/**
+ * Wat je bij "In huis" hebt aangetikt, voor de hele app (ook de boodschappenlijst kijkt mee).
+ * Blijft bewaard in SharedPreferences, ook na het afsluiten van de app.
+ */
+class PantryStore(private val prefs: SharedPreferences) {
 
     private val _selection = MutableStateFlow(
         PantrySelection(
@@ -53,16 +56,7 @@ class PantryViewModel(repository: RecipeRepository, private val prefs: SharedPre
         )
     )
 
-    /** Wat er nu gekozen is (alleen-lezen, voor tests). */
-    internal val selection: StateFlow<PantrySelection> get() = _selection
-
-    /** Regels analyseren is het zware werk: alleen opnieuw als de bibliotheek verandert, niet bij elke tik. */
-    private val index = repository.observeRecipesWithIngredients()
-        .map(PantryMatcher::index)
-
-    val state: StateFlow<PantryUiState?> = combine(index, _selection, ::pantryState)
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val selection: StateFlow<PantrySelection> get() = _selection
 
     fun toggle(key: String) = change { s -> s.copy(keys = if (key in s.keys) s.keys - key else s.keys + key) }
 
@@ -97,4 +91,25 @@ class PantryViewModel(repository: RecipeRepository, private val prefs: SharedPre
         const val KEYS = "selected"
         const val CUSTOM = "custom"
     }
+}
+
+class PantryViewModel(repository: RecipeRepository, private val store: PantryStore) : ViewModel() {
+
+    constructor(repository: RecipeRepository, prefs: SharedPreferences) : this(repository, PantryStore(prefs))
+
+    /** Wat er nu gekozen is (alleen-lezen, voor tests). */
+    internal val selection: StateFlow<PantrySelection> get() = store.selection
+
+    /** Regels analyseren is het zware werk: alleen opnieuw als de bibliotheek verandert, niet bij elke tik. */
+    private val index = repository.observeRecipesWithIngredients()
+        .map(PantryMatcher::index)
+
+    val state: StateFlow<PantryUiState?> = combine(index, store.selection, ::pantryState)
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun toggle(key: String) = store.toggle(key)
+    fun addCustom(text: String) = store.addCustom(text)
+    fun removeCustom(word: String) = store.removeCustom(word)
+    fun clear() = store.clear()
 }

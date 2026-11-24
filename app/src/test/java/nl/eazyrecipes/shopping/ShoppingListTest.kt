@@ -35,10 +35,31 @@ class ShoppingListTest {
     @Test
     fun `koude boter, boter of margarine en boter om in te vetten zijn allemaal boter`() {
         val s = ShoppingList.build(listOf(recipe("Taart", "150 gr boter of margarine", "boter (om in te vetten)", "60 gr koude boter", "verse peterselie")))
-        assertEquals("210 g", s.line("boter").amount)
+        // "Boter om in te vetten" heeft geen hoeveelheid: dat komt erbij als "extra".
+        assertEquals("210 g + extra", s.line("boter").amount)
         assertEquals(3, s.line("boter").sources.size)
         assertEquals(Aisle.GROENTE, s.line("peterselie").aisle)
         assertEquals("kleine", ShoppingList.shoppingName("kleine"))
+    }
+
+    @Test
+    fun `naar boven afronden en regels zonder hoeveelheid`() {
+        // "ui" zonder getal telt als één.
+        assertEquals("2", ShoppingList.build(listOf(recipe("A", "1 ui"), recipe("B", "ui"))).line("ui").amount)
+        // Kilo's en blikken naar boven: liever iets over dan te weinig.
+        assertEquals("1,1 kg", ShoppingList.build(listOf(recipe("A", "1040 g bloem"))).line("bloem").amount)
+        assertEquals("2 blikken", ShoppingList.build(listOf(recipe("A", "1 blik tomaten", base = 2, servings = 3))).line("tomaten").amount)
+        // Alleen regels zonder getal: geen hoeveelheid.
+        assertEquals("", ShoppingList.build(listOf(recipe("A", "peterselie"), recipe("B", "peterselie"))).line("peterselie").amount)
+    }
+
+    @Test
+    fun `oud vinkje telt niet voor een ander recept`() {
+        val a = ShoppingList.build(listOf(recipe("A", "2 uien")))
+        val tick = a.line("uien").checkKey
+        // A is eraf, B vraagt toevallig ook 2 uien: niet afgevinkt.
+        assertEquals(false, ShoppingList.build(listOf(recipe("B", "2 uien")), checked = setOf(tick)).line("uien").checked)
+        assertEquals(true, ShoppingList.build(listOf(recipe("A", "2 uien")), checked = setOf(tick)).line("uien").checked)
     }
 
     @Test
@@ -96,12 +117,16 @@ class ShoppingListTest {
     @Test
     fun `afvinken en eigen items`() {
         val first = ShoppingList.build(listOf(recipe("A", "2 uien", "1 courgette")))
-        val key = first.line("uien").key
+        val key = first.line("uien").checkKey
         val s = ShoppingList.build(
             listOf(recipe("A", "2 uien", "1 courgette")),
             extras = listOf(ExtraItem("1", "wc-papier", false), ExtraItem("2", "2 pakken melk", true)),
             checked = setOf(key),
         )
+        // Komt er een recept met uien bij, dan staan de uien weer open (je hebt er meer nodig).
+        val more = ShoppingList.build(listOf(recipe("A", "2 uien", "1 courgette"), recipe("B", "1 ui")), checked = setOf(key))
+        assertEquals(false, more.line("uien").checked)
+        assertEquals("3", more.line("uien").amount)
         assertEquals(listOf("uien", "melk"), s.done.map { it.name })
         assertEquals("2 pakken", s.line("melk").amount)
         assertEquals("2", s.extrasId("melk"))

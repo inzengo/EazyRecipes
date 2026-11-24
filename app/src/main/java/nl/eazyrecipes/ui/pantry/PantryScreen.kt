@@ -63,21 +63,35 @@ class PantryActions(
     val removeCustom: (String) -> Unit,
     val clear: () -> Unit,
     val open: (String) -> Unit,
+    /** Recept (wat je nog mist) op de boodschappenlijst zetten; `null` = geen knop. */
+    val addToList: ((String) -> Unit)? = null,
 )
 
 @Composable
-fun PantryScreen(vm: PantryViewModel, onOpen: (String) -> Unit) {
+fun PantryScreen(
+    vm: PantryViewModel,
+    onOpen: (String) -> Unit,
+    header: (@Composable () -> Unit)? = null,
+    onList: Set<String> = emptySet(),
+    addToList: ((String) -> Unit)? = null,
+) {
     val state by vm.state.collectAsStateWithLifecycle()
-    PantryScreen(state, PantryActions(vm::toggle, vm::addCustom, vm::removeCustom, vm::clear, onOpen))
+    PantryScreen(state, PantryActions(vm::toggle, vm::addCustom, vm::removeCustom, vm::clear, onOpen, addToList), header, onList)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PantryScreen(state: PantryUiState?, actions: PantryActions) {
+fun PantryScreen(
+    state: PantryUiState?,
+    actions: PantryActions,
+    header: (@Composable () -> Unit)? = null,
+    /** Ids van recepten die al op de boodschappenlijst staan. */
+    onList: Set<String> = emptySet(),
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            ColorHero(Eazy.Brand, R.drawable.ph_basket, "Wat heb je\nin huis?", "Tik aan wat je hebt, wij zoeken wat je ermee kunt maken.")
+            ColorHero(Eazy.Brand, R.drawable.ph_basket, "Wat heb je\nin huis?", "Tik aan wat je hebt, wij zoeken wat je ermee kunt maken.", header = header)
             Column(
                 Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -115,7 +129,9 @@ fun PantryScreen(state: PantryUiState?, actions: PantryActions) {
                 when {
                     state.selectedCount == 0 -> Notice("Kies een paar ingrediënten om te beginnen.")
                     state.matches.isEmpty() -> Notice("Geen recept gevonden met wat je hebt gekozen. Tik er nog een paar aan.")
-                    else -> state.matches.forEach { m -> MatchRow(m) { actions.open(m.recipe.id) } }
+                    else -> state.matches.forEach { m ->
+                        MatchRow(m, onList = m.recipe.id in onList, addToList = actions.addToList?.let { add -> { add(m.recipe.id) } }) { actions.open(m.recipe.id) }
+                    }
                 }
             }
         }
@@ -202,7 +218,7 @@ private fun CustomField(onAdd: (String) -> Unit) {
 }
 
 @Composable
-private fun MatchRow(m: PantryMatch, onClick: () -> Unit) {
+private fun MatchRow(m: PantryMatch, onList: Boolean = false, addToList: (() -> Unit)? = null, onClick: () -> Unit) {
     val ctx = m.recipe.context
     val scoreColor = ctx.accent
     Surface(onClick = onClick, shape = RoundedCornerShape(26.dp), color = Eazy.Paper, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
@@ -226,6 +242,15 @@ private fun MatchRow(m: PantryMatch, onClick: () -> Unit) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // Wat je mist meteen op de lijst (wat je in huis hebt, staat daar onder "Heb je al").
+                if (addToList != null && m.missing.isNotEmpty()) {
+                    nl.eazyrecipes.ui.components.Chip(
+                        if (onList) "Op je lijst" else "Op de lijst",
+                        if (onList) R.drawable.ic_check else R.drawable.ic_plus,
+                        if (onList) scoreColor else Eazy.Grey,
+                        onClick = if (onList) null else addToList,
+                    )
+                }
             }
             Box(Modifier.size(54.dp).clip(CircleShape).background(scoreColor), contentAlignment = Alignment.Center) {
                 Text(

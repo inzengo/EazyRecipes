@@ -35,7 +35,7 @@ enum class HaveReason {
 }
 
 data class ShoppingLine(
-    /** Blijft hetzelfde zolang de lijst niet verandert; daarmee wordt afvinken onthouden. Eigen items: `x:<id>`. */
+    /** Het ingrediënt ("i:ui"); eigen items: `x:<id>`. Afvinken gaat via [checkKey]. */
     val key: String,
     val name: String,
     /** "500 g", "3", "300 g + 2 el", of leeg. */
@@ -49,6 +49,13 @@ data class ShoppingLine(
     val extraId: String? = null,
 ) {
     val text: String get() = if (amount.isEmpty()) name else "$amount $name"
+
+    /**
+     * Wat er bij afvinken wordt onthouden: ingrediënt + hoeveelheid + van welke recepten. Komt er een recept met uien bij
+     * terwijl de uien al in je mandje liggen, dan staan ze weer open: je hebt er nu meer nodig. En een oud vinkje
+     * (recept eraf gehaald) telt niet voor een ander recept dat toevallig evenveel uien vraagt.
+     */
+    val checkKey: String get() = "$key|$amount|" + sources.map { it.recipeId }.distinct().sorted().joinToString(",")
 }
 
 data class ShoppingSection(val aisle: Aisle, val lines: List<ShoppingLine>)
@@ -82,7 +89,7 @@ object ShoppingList {
     ): ShoppingListState {
         val entries = recipes.flatMap { r -> r.lines.mapNotNull { entry(r, it, pantryKeys, pantryCustom) } }
         val groups = group(entries)
-        val lines = groups.map(::merge).map { it.copy(checked = it.key in checked) } +
+        val lines = groups.map(::merge).map { it.copy(checked = it.checkKey in checked) } +
             extras.filter { it.text.isNotBlank() }.map(::extraLine)
 
         val byName = compareBy<ShoppingLine> { it.name.lowercase(Locale.ROOT) }
@@ -213,7 +220,12 @@ object ShoppingList {
 
     private fun merge(group: List<Entry>): ShoppingLine {
         val first = group.first()
-        val total = Amount.sum(group.mapNotNull { it.amount })
+        // Regels zonder hoeveelheid ("ui") naast regels mét: bij stuks telt zo'n regel als 1, anders "+ extra".
+        val withAmount = group.mapNotNull { it.amount }
+        val without = group.count { it.amount == null }
+        val countsOnly = withAmount.isNotEmpty() && withAmount.all { it.kind == Amount.Kind.COUNT }
+        val total = Amount.sum(withAmount + if (countsOnly) List(without) { Amount.of(1.0, null, null) } else emptyList())
+        val extra = without > 0 && withAmount.isNotEmpty() && !countsOnly
         // Bij stuks: meer dan één = de langste (meervouds)vorm, anders de kortste: "4 uien", "1 ui".
         val names = group.map { it.name }.distinct()
         val pieces = total.firstOrNull { it.kind == Amount.Kind.COUNT }
@@ -226,7 +238,7 @@ object ShoppingList {
         return ShoppingLine(
             key = key,
             name = name,
-            amount = total.joinToString(" + ") { it.format() },
+            amount = total.joinToString(" + ") { it.format() } + if (extra) " + extra" else "",
             aisle = first.aisle,
             sources = group.map { it.source },
             checked = false,
@@ -260,14 +272,16 @@ internal data class Amount(val kind: Kind, val low: Double, val high: Double?, v
         Kind.TEASPOON -> range(low, high, null) + " tl"
         // Stuks koop je heel: ½ citroen = 1 citroen, 1½ komkommer = 2.
         Kind.COUNT -> range(ceil(low - 1e-9), high?.let { ceil(it - 1e-9) }, null)
-        Kind.OTHER -> range(low, high, null) + " " + unitForm(unit, plural = (high ?: low) > 1.0)
+        // Blikken, pakken, bosjes: ook heel (1,5 blik = 2 blikken).
+        Kind.OTHER -> range(ceil(low - 1e-9), high?.let { ceil(it - 1e-9) }, null) + " " + unitForm(unit, plural = ceil((high ?: low) - 1e-9) > 1.0)
     }
 
     /** Vanaf 1000 g/ml in kg/l met hoogstens één decimaal ("1,1 kg"), daaronder in g/ml (op 5 afgerond vanaf 100). */
     private fun metric(low: Double, high: Double?, step: Double, small: String, big: String): String {
         if (low < step) return range(low, high, small) + " $small"
         fun dec(v: Double): String {
-            val r = Math.round(v / step * 10) / 10.0
+            // Naar boven: 1040 g is "1,1 kg", niet "1 kg" (anders koop je te weinig).
+            val r = ceil(v / step * 10 - 1e-9) / 10.0
             return if (r == Math.floor(r)) r.toLong().toString() else r.toString().replace('.', ',')
         }
         return dec(low) + (high?.takeIf { dec(it) != dec(low) }?.let { "-" + dec(it) } ?: "") + " $big"

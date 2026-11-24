@@ -67,10 +67,10 @@ class MigrationTest {
     }
 
     @Test
-    fun `v1 naar v4 - standaardcategorieen erbij, recepten houden soort en labels`() = runBlocking {
+    fun `v1 naar v5 - standaardcategorieen erbij, recepten houden soort en labels, lege boodschappenlijst`() = runBlocking {
         createV1()
         val db = Room.databaseBuilder(context, EazyDatabase::class.java, name)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(*MIGRATIONS)
             .allowMainThreadQueries()
             .build()
         try {
@@ -90,6 +90,10 @@ class MigrationTest {
             // De rest is intact: ingrediënten en zoekindex.
             assertEquals(listOf("200 gr kipfilet"), repo.get("r1")!!.ingredients.map { it.raw })
             assertEquals(listOf("r1"), repo.search("kipf").map { it.id })
+            // v5: de boodschappenlijst bestaat en werkt.
+            val shopping = ShoppingRepository(db)
+            shopping.addRecipe("r1", 4)
+            assertEquals(listOf("r1" to 4), shopping.observeRecipes().first().map { it.recipeId to it.servings })
         } finally {
             db.close()
             context.deleteDatabase(name)

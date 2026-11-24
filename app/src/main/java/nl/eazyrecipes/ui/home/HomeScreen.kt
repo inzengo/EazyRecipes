@@ -61,7 +61,7 @@ import nl.eazyrecipes.ui.theme.Eazy
 
 enum class HomeTab(val label: String, @DrawableRes val icon: Int) {
     LIBRARY("Recepten", R.drawable.ph_books),
-    PANTRY("In huis", R.drawable.ph_basket),
+    PANTRY("Keuken", R.drawable.ph_basket),
     DISCOVER("Ontdek", R.drawable.ph_compass),
     MORE("Meer", R.drawable.ph_dots),
 }
@@ -208,7 +208,7 @@ private fun BottomNav(selected: HomeTab, accent: Color, onSelect: (HomeTab) -> U
 
 /** Gekleurde kop met watermerk-icoon (In huis, Ontdek). */
 @Composable
-fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, badge: String? = null) {
+fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, badge: String? = null, header: (@Composable () -> Unit)? = null) {
     Box(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp)).background(color)
     ) {
@@ -221,6 +221,7 @@ fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, 
             Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            header?.let { Box(Modifier.padding(bottom = 8.dp)) { it() } }
             badge?.let {
                 Text(
                     it, style = MaterialTheme.typography.labelSmall, color = Eazy.Paper,

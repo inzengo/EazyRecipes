@@ -25,6 +25,9 @@ class AppContainer(context: Context) {
     val bundles = nl.eazyrecipes.share.Bundles(repository, images)
     val batch by lazy { nl.eazyrecipes.importer.BatchImport(importer, repository, images, appScope) }
     val timers = nl.eazyrecipes.cook.KitchenTimers(context.getSharedPreferences("timers", Context.MODE_PRIVATE))
+    val shopping = nl.eazyrecipes.data.ShoppingRepository(EazyDatabase.get(context))
+    /** Wat je bij "In huis" hebt aangetikt; ook de boodschappenlijst kijkt mee. */
+    val pantry = nl.eazyrecipes.ui.pantry.PantryStore(context.getSharedPreferences("pantry", Context.MODE_PRIVATE))
     /** Voor schrijfacties die niet mogen stoppen als een scherm (en zijn ViewModel) verdwijnt, zoals een notitie opslaan. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }

@@ -192,6 +192,39 @@ data class CollectionRecipeEntity(
     val deletedAt: Long? = null,
 )
 
+/** Een recept op de boodschappenlijst, met de porties waarvoor je inkoopt (`null` = zoals in het recept). Sinds v5. */
+@Entity(
+    tableName = "shopping_recipe",
+    foreignKeys = [ForeignKey(RecipeEntity::class, ["id"], ["recipeId"], onDelete = ForeignKey.CASCADE)],
+)
+data class ShoppingRecipeEntity(
+    @PrimaryKey val recipeId: String,
+    val servings: Int?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
+/** Iets wat je zelf op de lijst zet ("wc-papier"). Sinds v5. */
+@Entity(tableName = "shopping_item")
+data class ShoppingItemEntity(
+    @PrimaryKey val id: String,
+    val text: String,
+    val checked: Boolean = false,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
+/** Een afgevinkte regel uit de recepten: ingrediënt + hoeveelheid (zie `ShoppingLine.checkKey`). Sinds v5. */
+@Entity(tableName = "shopping_check")
+data class ShoppingCheckEntity(
+    @PrimaryKey val key: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
 /**
  * Zoekindex over titel, ingrediënten en tags. Wordt door [RecipeRepository] bijgewerkt bij elke wijziging.
  * `unicode61` haalt accenten weg, dus "creme" vindt "crème".

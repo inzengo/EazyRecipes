@@ -12,20 +12,21 @@ _Laatst bijgewerkt: 2026-11-24_
 | 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
 | 4 — Koken, ordenen & delen | ✅ klaar (4a–4e) — **nog niet op de telefoon getest** |
 | 5 — Overige import | ✅ klaar (zelf invoeren, meerdere links, bladwijzers, foto/OCR) — **nog niet op de telefoon getest** |
-| 3–5 en later | zie [PLAN.md](PLAN.md) |
+| 6 — Boodschappenlijst | ✅ klaar (6a, 6b), v0.7.0 — **nog niet op de telefoon getest** |
+| later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
 
 - **Repo:** Kotlin + Jetpack Compose-skelet (`app/`). Het delen-menu ("Delen → EazyRecipes") vangt al een link op en toont die.
 - **APK:** `assembleDebug` werkt. Output: `E:\DevTools\builds\EazyRecipes\app\outputs\apk\debug\app-debug.apk`.
   Nog **niet** op een telefoon getest.
-- **Datamodel (Room 2.7, KSP2), schema v4:** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, category, recipe_category, plus de FTS4-index `recipe_fts`. Migraties v1 → v2 → v3 → v4 in `EazyDatabase.kt` (getest met een echte v1-database uit `app/schemas/.../1.json`, `MigrationTest`). Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
+- **Datamodel (Room 2.7, KSP2), schema v5:** `app/src/main/java/nl/eazyrecipes/data/`. Tabellen recipe, ingredient, step, tag, recipe_tag, collection, collection_recipe, category, recipe_category, plus de FTS4-index `recipe_fts`. Migraties v1 → v2 → v3 → v4 in `EazyDatabase.kt` (getest met een echte v1-database uit `app/schemas/.../1.json`, `MigrationTest`). Elke rij heeft `createdAt`/`updatedAt`/`deletedAt`; entiteiten hebben een UUID. `RecipeRepository` is de enige schrijfingang en houdt timestamps en zoekindex bij.
   Zoeken: elk woord als prefix ("kipf" vindt "kipfilet"), zonder accenten ("creme" vindt "crème"). Schema-export staat in `app/schemas/`.
 - **Importer:** `app/src/main/java/nl/eazyrecipes/importer/`.
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 138 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 152 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -141,9 +142,27 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
   - **Importopties onder de +-knop** (`8f9b7f7`): link plakken, zelf invoeren, bladwijzers en `.eazy`-bestand op één plek.
   - **Foto/OCR** (`c8a4341`, v0.6.0): +-knop → camera of tot 5 afbeeldingen uit de galerij (kookboekpagina's, screenshots). ML Kit tekstherkenning (gebundeld, offline) leest de tekst buiten de hoofdthread, verkleind tot 2500 px. `importer/PhotoRecipeParser.kt` deelt in: titel, porties, tijd, ingrediënten, stappen → bestaande editor om na te kijken. Er gaat geen OCR-regel verloren. APK alleen voor `arm64-v8a` om het ML Kit-model klein te houden.
 
+## Fase 6 — boodschappenlijst
+
+- **6a** logica (shopping/ShoppingList.kt, shopping/Aisles.kt): recepten + porties → één lijst.
+  - Samenvoegen op naam, laatste woord in enkel-/meervoud (ui/uien, tomaat/tomaten, wortel/wortelen); "koude", "verse", … en "of margarine" vallen weg.
+  - Optellen per soort eenheid: g/kg, ml/l, el, tl, stuks (naar boven), overige eenheden (blik, pak, …; naar boven). Wat niet op te tellen is: "600 g + 2 blikjes". Regel zonder getal naast stuks = 1, anders "+ extra". kg/l naar boven op 0,1.
+  - Afdelingen: vast per "In huis"-item, anders op het woordeinde ("paprikapoeder" = kruiden).
+  - "Heb je al": basis (zout, peper, olie, water) en wat bij In huis is aangetikt. "Naar smaak"/"optioneel" komen wél op de lijst.
+  - Afvinken onthoudt ingrediënt + hoeveelheid + recepten (checkKey): verandert er iets, dan staat de regel weer open.
+- **6b** opslag en schermen:
+  - Room v5 (MIGRATION_4_5): shopping_recipe (recept + porties, 
+ull = zoals in het recept), shopping_item (eigen items), shopping_check (vinkjes). ShoppingRepository. Niet in de .eazy-back-up.
+  - Tabblad **Keuken** met schakelaar In huis | Boodschappen (aantal te halen als badge). De "In huis"-keuze zit nu in PantryStore (gedeeld).
+  - Boodschappen (ui/shopping/): recepten als rij chips (tik = porties, openen, van de lijst), "Iets toevoegen", lijst per afdeling met herkomst, "Heb je waarschijnlijk al", "In je mandje", delen als tekst, lijst leegmaken.
+  - Receptscherm: knop bij "Ingrediënten": Op de lijst / Lijst bijwerken (andere porties) / Op je lijst (tik = eraf).
+  - In huis: "Op de lijst" bij elk passend recept.
+  - Screenshots:  8c-kitchen-pantry.png, 13-shopping.png, 13b-shopping-empty.png.
+  - Bekend: twee keer heel snel op + bij porties kan als één tik tellen.
+
 ## Volgende stap
 
-1. **Alles op de telefoon testen** (fase 3–5, APK v0.6.1) — getest op 2026-11-24: alles werkt, behalve tekst delen naar Discord (opgelost in 0.6.1, nog even nakijken). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
+1. **Alles op de telefoon testen** (fase 3–6, APK v0.7.0; boodschappenlijst en Discord-delen zijn nieuw) — getest op 2026-11-24: alles werkt, behalve tekst delen naar Discord (opgelost in 0.6.1, nog even nakijken). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
 2. Bevindingen van de test oplossen, daarna de volgende fase kiezen uit [PLAN.md](PLAN.md#later).
 
 ## Open punten

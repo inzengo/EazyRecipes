@@ -19,19 +19,23 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RecipeFtsEntity::class,
         CategoryEntity::class,
         RecipeCategoryEntity::class,
+        ShoppingRecipeEntity::class,
+        ShoppingItemEntity::class,
+        ShoppingCheckEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class EazyDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
+    abstract fun shoppingDao(): ShoppingDao
 
     companion object {
         @Volatile private var instance: EazyDatabase? = null
 
         fun get(context: Context): EazyDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, EazyDatabase::class.java, "eazyrecipes.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(*MIGRATIONS)
                 .addCallback(SeedCategories)
                 .build()
                 .also { instance = it }
@@ -87,3 +91,25 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+/** v4 → v5: de boodschappenlijst (recepten met porties, eigen items, afgevinkte regels). Begint leeg. */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `shopping_recipe` (`recipeId` TEXT NOT NULL, `servings` INTEGER, `createdAt` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`recipeId`), " +
+                "FOREIGN KEY(`recipeId`) REFERENCES `recipe`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `shopping_item` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `checked` INTEGER NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `shopping_check` (`key` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`key`))"
+        )
+    }
+}
+
+/** Alle migraties, in volgorde (ook voor de migratietest). */
+val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
