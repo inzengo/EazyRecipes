@@ -71,12 +71,11 @@ class PantryActions(
 fun PantryScreen(
     vm: PantryViewModel,
     onOpen: (String) -> Unit,
-    header: (@Composable () -> Unit)? = null,
     onList: Set<String> = emptySet(),
     addToList: ((String) -> Unit)? = null,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    PantryScreen(state, PantryActions(vm::toggle, vm::addCustom, vm::removeCustom, vm::clear, onOpen, addToList), header, onList)
+    PantryScreen(state, PantryActions(vm::toggle, vm::addCustom, vm::removeCustom, vm::clear, onOpen, addToList), onList)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -84,14 +83,13 @@ fun PantryScreen(
 fun PantryScreen(
     state: PantryUiState?,
     actions: PantryActions,
-    header: (@Composable () -> Unit)? = null,
     /** Ids van recepten die al op de boodschappenlijst staan. */
     onList: Set<String> = emptySet(),
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            ColorHero(Eazy.Brand, R.drawable.ph_basket, "Wat heb je\nin huis?", "Tik aan wat je hebt, wij zoeken wat je ermee kunt maken.", header = header)
+            ColorHero(Eazy.Brand, R.drawable.ph_basket, "Wat heb je\nin huis?", "Tik aan wat je hebt, wij zoeken wat je ermee kunt maken.")
             Column(
                 Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),

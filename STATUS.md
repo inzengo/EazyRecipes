@@ -12,7 +12,7 @@ _Laatst bijgewerkt: 2026-11-24_
 | 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
 | 4 — Koken, ordenen & delen | ✅ klaar (4a–4e) — **nog niet op de telefoon getest** |
 | 5 — Overige import | ✅ klaar (zelf invoeren, meerdere links, bladwijzers, foto/OCR) — **nog niet op de telefoon getest** |
-| 6 — Boodschappenlijst | ✅ klaar (6a, 6b), v0.7.0 — **nog niet op de telefoon getest** |
+| 6 — Boodschappenlijst | ✅ klaar (6a, 6b), v0.7.1; Ontdek geschrapt — **nog niet op de telefoon getest** |
 | later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -57,7 +57,7 @@ _Laatst bijgewerkt: 2026-11-24_
 
 - **Contextkleur:** kies je een categorie, dan kleurt de kop mee (met een groot icoon als watermerk), net als de navigatie en de +-knop. Receptdetail en kookmodus nemen de kleur van het recept over.
 - **Iconen:** Phosphor Icons (MIT), fill-variant. Vlees = koe (Phosphor heeft geen drumstick/biefstuk).
-- **Navigatie:** zwevende zwarte pil (Recepten · In huis · Ontdek · Meer) met een aparte ronde +-knop.
+- **Navigatie:** zwevende zwarte pil (Recepten · In huis · Lijst · Meer) met een aparte ronde +-knop.
 - **Bibliotheek:**
   - grote kop met de zoekbalk erin en een filterknop
   - categorie-tegels
@@ -81,7 +81,7 @@ Remote `origin` = https://github.com/inzengo/EazyRecipes (privé). `main` volgt 
 
 ## Fase 3 — wat er gedaan is
 
-- **3a** (`881b71a`): bibliotheek volgens de mockup (zoeken, categorie-tegels, tabs, filter-sheet, uitgelicht recept, navigatiebalk). Ontdek en Meer zijn tussenpagina's.
+- **3a** (`881b71a`): bibliotheek volgens de mockup (zoeken, categorie-tegels, tabs, filter-sheet, uitgelicht recept, navigatiebalk). Meer was een tussenpagina; Ontdek is later geschrapt.
 - **3b** (`9e192e8`): collecties (tab, openen = gefilterde bibliotheek, hernoemen en verwijderen, mapje op het detailscherm).
 - **3c** "In huis" (`ui/pantry/`):
   - `PantryCatalog`: ~65 veelvoorkomende ingrediënten met varianten (kip = kip, kipfilet, kippendijen, …) en uitzonderingen (lente-ui ≠ ui, zoete aardappel ≠ aardappel, zure room ≠ room).
@@ -144,25 +144,24 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
 
 ## Fase 6 — boodschappenlijst
 
-- **6a** logica (shopping/ShoppingList.kt, shopping/Aisles.kt): recepten + porties → één lijst.
+- **6a** logica (`shopping/ShoppingList.kt`, `shopping/Aisles.kt`): recepten + porties → één lijst.
   - Samenvoegen op naam, laatste woord in enkel-/meervoud (ui/uien, tomaat/tomaten, wortel/wortelen); "koude", "verse", … en "of margarine" vallen weg.
   - Optellen per soort eenheid: g/kg, ml/l, el, tl, stuks (naar boven), overige eenheden (blik, pak, …; naar boven). Wat niet op te tellen is: "600 g + 2 blikjes". Regel zonder getal naast stuks = 1, anders "+ extra". kg/l naar boven op 0,1.
   - Afdelingen: vast per "In huis"-item, anders op het woordeinde ("paprikapoeder" = kruiden).
   - "Heb je al": basis (zout, peper, olie, water) en wat bij In huis is aangetikt. "Naar smaak"/"optioneel" komen wél op de lijst.
-  - Afvinken onthoudt ingrediënt + hoeveelheid + recepten (checkKey): verandert er iets, dan staat de regel weer open.
+  - Afvinken onthoudt ingrediënt + hoeveelheid + recepten (`checkKey`): verandert er iets, dan staat de regel weer open.
 - **6b** opslag en schermen:
-  - Room v5 (MIGRATION_4_5): shopping_recipe (recept + porties, 
-ull = zoals in het recept), shopping_item (eigen items), shopping_check (vinkjes). ShoppingRepository. Niet in de .eazy-back-up.
-  - Tabblad **Keuken** met schakelaar In huis | Boodschappen (aantal te halen als badge). De "In huis"-keuze zit nu in PantryStore (gedeeld).
-  - Boodschappen (ui/shopping/): recepten als rij chips (tik = porties, openen, van de lijst), "Iets toevoegen", lijst per afdeling met herkomst, "Heb je waarschijnlijk al", "In je mandje", delen als tekst, lijst leegmaken.
+  - Room v5 (`MIGRATION_4_5`): `shopping_recipe` (recept + porties, `null` = zoals in het recept), `shopping_item` (eigen items), `shopping_check` (vinkjes). `ShoppingRepository`. Niet in de `.eazy`-back-up.
+  - Eigen tabblad **Lijst** (scherm "Boodschappen"), met het aantal te halen als getal op het icoon. Eerst als schakelaar in een tabblad Keuken; op 2026-11-24 weer losgemaakt toen Ontdek verviel. De "In huis"-keuze zit in `PantryStore` (gedeeld).
+  - Boodschappen (`ui/shopping/`): recepten als rij chips (tik = porties, openen, van de lijst), "Iets toevoegen", lijst per afdeling met herkomst, "Heb je waarschijnlijk al", "In je mandje", delen als tekst, lijst leegmaken.
   - Receptscherm: knop bij "Ingrediënten": Op de lijst / Lijst bijwerken (andere porties) / Op je lijst (tik = eraf).
   - In huis: "Op de lijst" bij elk passend recept.
-  - Screenshots:  8c-kitchen-pantry.png, 13-shopping.png, 13b-shopping-empty.png.
+  - Screenshots: `08c-pantry-list-buttons.png`, `13-shopping.png`, `13b-shopping-empty.png`, `02d-nav-shopping.png`, `02e-nav-pantry.png`.
   - Bekend: twee keer heel snel op + bij porties kan als één tik tellen.
 
 ## Volgende stap
 
-1. **Alles op de telefoon testen** (fase 3–6, APK v0.7.0; boodschappenlijst en Discord-delen zijn nieuw) — getest op 2026-11-24: alles werkt, behalve tekst delen naar Discord (opgelost in 0.6.1, nog even nakijken). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
+1. **Alles op de telefoon testen** (fase 3–6, APK v0.7.1). Getest op 2026-11-24 (v0.6.0): alles werkt, behalve tekst delen naar Discord (opgelost in 0.6.1, nog nakijken). Nieuw sinds die test: boodschappenlijst, navigatie zonder Ontdek. Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
 2. Bevindingen van de test oplossen, daarna de volgende fase kiezen uit [PLAN.md](PLAN.md#later).
 
 ## Open punten
@@ -170,7 +169,6 @@ ull = zoals in het recept), shopping_item (eigen items), shopping_check (vinkjes
 - Gradle-geheugen is verhoogd naar `-Xmx2g` / 1 GB metaspace. Dat is getest met een `clean` + build + tests.
 - `build`-mappen zijn nu junctions naar E: (nodig voor KSP en screenshot-tests). `clean` wist via het junction-pad. Zie [docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md#5-gradle-build-output-en-temp-naar-e).
 - De hoofdingrediënt-gok (`MainIngredientGuesser`) is een heuristiek. In het voorbeeldscherm moet de gebruiker hem kunnen aanpassen.
-- Welke sites komen er naast leukerecepten.nl en eefkooktzo.nl bij Ontdekken (latere fase)?
 - Foto's in de mockup komen van Unsplash. In de app gebruiken we de foto van de bron, die lokaal wordt opgeslagen.
 
 ## Zo pak je het weer op

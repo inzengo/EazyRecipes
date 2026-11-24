@@ -46,11 +46,8 @@ import nl.eazyrecipes.ui.library.LibraryViewModel
 import nl.eazyrecipes.ui.pantry.PantryScreen
 import nl.eazyrecipes.ui.pantry.PantryViewModel
 import nl.eazyrecipes.ui.theme.EazyTheme
-import nl.eazyrecipes.ui.shopping.KitchenPart
-import nl.eazyrecipes.ui.shopping.KitchenSwitch
 import nl.eazyrecipes.ui.shopping.ShoppingScreen
 import nl.eazyrecipes.ui.shopping.ShoppingViewModel
-import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -101,6 +98,10 @@ class MainActivity : ComponentActivity() {
                 NavHost(nav, startDestination = Routes.LIBRARY) {
                     composable(Routes.LIBRARY) {
                         val library = viewModel { LibraryViewModel(c.repository) }
+                        // Boodschappenlijst: voor het tabblad, het getal op het icoon en "Op de lijst" bij In huis.
+                        // In huis en de lijst kijken naar dezelfde "In huis"-keuze (c.pantry).
+                        val shoppingVm = viewModel { ShoppingViewModel(c.shopping, c.repository, c.pantry) }
+                        val list by shoppingVm.state.collectAsStateWithLifecycle()
                         HomeScreen(
                             library = library,
                             onOpen = { nav.navigate(Routes.recipe(it)) },
@@ -112,23 +113,16 @@ class MainActivity : ComponentActivity() {
                             onOpenBookmarks = { nav.navigate(Routes.bookmarks(it)) },
                             onImportPhotos = { nav.navigate(Routes.importPhotos(it)) },
                             pantry = {
-                                // Keuken: In huis | Boodschappen. Beide kijken naar dezelfde "In huis"-keuze (c.pantry).
                                 val pantryVm = viewModel { PantryViewModel(c.repository, c.pantry) }
-                                val shoppingVm = viewModel { ShoppingViewModel(c.shopping, c.repository, c.pantry) }
-                                var part by rememberSaveable { mutableStateOf(KitchenPart.PANTRY) }
-                                val list by shoppingVm.state.collectAsStateWithLifecycle()
-                                val switch: @androidx.compose.runtime.Composable () -> Unit = { KitchenSwitch(part, list?.toBuy ?: 0) { part = it } }
-                                when (part) {
-                                    KitchenPart.PANTRY -> PantryScreen(
-                                        pantryVm,
-                                        onOpen = { nav.navigate(Routes.recipe(it)) },
-                                        header = switch,
-                                        onList = list?.recipes?.map { it.id }?.toSet().orEmpty(),
-                                        addToList = { id -> c.appScope.launch { c.shopping.addRecipe(id, null) } },
-                                    )
-                                    KitchenPart.SHOPPING -> ShoppingScreen(shoppingVm, onOpenRecipe = { nav.navigate(Routes.recipe(it)) }, header = switch)
-                                }
+                                PantryScreen(
+                                    pantryVm,
+                                    onOpen = { nav.navigate(Routes.recipe(it)) },
+                                    onList = list?.recipes?.map { it.id }?.toSet().orEmpty(),
+                                    addToList = { id -> c.appScope.launch { c.shopping.addRecipe(id, null) } },
+                                )
                             },
+                            shopping = { ShoppingScreen(shoppingVm, onOpenRecipe = { nav.navigate(Routes.recipe(it)) }) },
+                            toBuy = list?.toBuy ?: 0,
                         )
                     }
                     composable(

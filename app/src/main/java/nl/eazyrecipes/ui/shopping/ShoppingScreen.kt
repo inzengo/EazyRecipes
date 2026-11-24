@@ -115,7 +115,7 @@ class ShoppingActions(
 )
 
 @Composable
-fun ShoppingScreen(vm: ShoppingViewModel, onOpenRecipe: (String) -> Unit, header: (@Composable () -> Unit)? = null) {
+fun ShoppingScreen(vm: ShoppingViewModel, onOpenRecipe: (String) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     ShoppingScreen(
@@ -124,7 +124,6 @@ fun ShoppingScreen(vm: ShoppingViewModel, onOpenRecipe: (String) -> Unit, header
             vm::toggle, vm::addItem, vm::removeItem, vm::setServings, vm::removeRecipe, vm::clear, onOpenRecipe,
             share = { s -> Sharing.shareText(context, "Boodschappen", ShoppingList.asText(s)) },
         ),
-        header,
     )
 }
 
@@ -132,7 +131,6 @@ fun ShoppingScreen(vm: ShoppingViewModel, onOpenRecipe: (String) -> Unit, header
 fun ShoppingScreen(
     state: ShoppingListState?,
     actions: ShoppingActions,
-    header: (@Composable () -> Unit)? = null,
     /** Voor de screenshot-test: "Heb je al" en "In je mandje" open. */
     expanded: Boolean = false,
 ) {
@@ -148,7 +146,7 @@ fun ShoppingScreen(
                 state.toBuy == 0 -> "Alles gehaald!"
                 else -> "${state.toBuy} te halen" + if (state.recipes.isNotEmpty()) " · ${state.recipes.size} ${if (state.recipes.size == 1) "recept" else "recepten"}" else ""
             }
-            ColorHero(ShoppingYellow, R.drawable.ph_list, "Boodschappen", sub, header = header)
+            ColorHero(ShoppingYellow, R.drawable.ph_list, "Boodschappen", sub)
             Column(
                 Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -346,27 +344,5 @@ private fun RecipeSheet(r: ShoppingRecipe, actions: ShoppingActions, onDismiss: 
 private fun StepButton(icon: Int, description: String, enabled: Boolean, onClick: () -> Unit) {
     Surface(onClick = onClick, enabled = enabled, shape = CircleShape, color = Eazy.Paper.copy(alpha = if (enabled) 1f else 0.5f), modifier = Modifier.size(44.dp)) {
         Box(contentAlignment = Alignment.Center) { Ico(icon, 18.dp, contentDescription = description) }
-    }
-}
-
-enum class KitchenPart(val label: String) { PANTRY("In huis"), SHOPPING("Boodschappen") }
-
-/** Schakelaar bovenaan de keuken: In huis | Boodschappen (met het aantal dat je nog moet halen). */
-@Composable
-fun KitchenSwitch(selected: KitchenPart, toBuy: Int, onSelect: (KitchenPart) -> Unit) {
-    Row(Modifier.clip(CircleShape).background(Eazy.Ink.copy(alpha = 0.12f)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        KitchenPart.entries.forEach { p ->
-            val on = p == selected
-            Surface(onClick = { onSelect(p) }, shape = CircleShape, color = if (on) Eazy.Ink else Color.Transparent, contentColor = if (on) Eazy.Paper else Eazy.Ink) {
-                Row(Modifier.height(38.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(p.label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold))
-                    if (p == KitchenPart.SHOPPING && toBuy > 0) {
-                        Box(Modifier.clip(CircleShape).background(if (on) ShoppingYellow else Eazy.Ink).padding(horizontal = 7.dp, vertical = 1.dp)) {
-                            Text("$toBuy", style = MaterialTheme.typography.labelSmall, color = if (on) Eazy.Ink else Eazy.Paper)
-                        }
-                    }
-                }
-            }
-        }
     }
 }

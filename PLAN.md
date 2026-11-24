@@ -63,7 +63,6 @@ Rust is bewust niet gekozen; de importlogica blijft een losse module (`import/`)
 
 ### Later
 - **Boodschappenlijst** uit gekozen recepten (vereist het parsen van ingrediënten: hoeveelheid/eenheid/naam)
-- **Ontdekken**: zoeken op externe sites via sitemaps → lokale index, één tik importeren
 - **Delen niveau B**: deellink voor recept/collectie/bibliotheek → webpagina, "Opslaan in EazyRecipes"
   (gratis tier Supabase of Cloudflare). Hiermee kun je je bibliotheek ook op de laptop bekijken.
 - **Delen niveau C**: gedeelde collecties met accounts + sync
@@ -78,7 +77,7 @@ Volledige uitwerking: [STATUS.md](STATUS.md#design-besluiten-v02) en de mockups 
 - Contextkleur: felle vlakken per categorie met zwarte tekst; de kop, de navigatie, het recept en de kookmodus kleuren mee.
 - Bricolage Grotesque + Figtree; Phosphor-iconen (fill).
 - Kleur nooit als enige signaal: altijd ook een icoon of label. Foutmeldingen krijgen een eigen vorm.
-- Navigatie: Recepten · In huis · Ontdek · Meer, plus een zwevende +-knop.
+- Navigatie: Recepten · In huis · Lijst (boodschappen) · Meer, plus een zwevende +-knop. Ontdek is geschrapt (2026-11-24).
 - Bibliotheek-tabs: Recepten · Favorieten · Collecties. Filters in een bottom sheet.
 
 ## Architectuur
@@ -180,18 +179,17 @@ zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we h
   `PhotoRecipeParser` deelt in op kopjes (Ingrediënten/Bereiding, ook Engels) of gokt zonder kopjes →
   bewerkscherm om na te kijken. Geen omslagfoto uit de foto (meestal een bladzijde tekst); die kies je daarna zelf.
 
-Daarna: boodschappenlijst, Ontdekken, delen B → C.
+Daarna: boodschappenlijst, delen B → C. (Ontdekken is geschrapt op 2026-11-24.)
 
 ### Fase 6 — Boodschappenlijst
-Besluit 2026-11-24: het tabblad "In huis" wordt **Keuken**, met bovenaan In huis | Boodschappen.
+Besluit 2026-11-24: Ontdek (zoeken naar nieuwe recepten) is geschrapt. In huis en Boodschappen hebben elk een eigen tabblad: **Recepten · In huis · Lijst · Meer** ("Boodschappen" past niet in de balk als de knop actief is).
 - **6a** logica (`shopping/`): recepten + porties → één lijst. Gelijke ingrediënten samen (enkel-/meervoud: ui/uien,
   tomaat/tomaten; "koude boter", "boter of margarine" = boter), opgeteld per soort eenheid (g/kg, ml/dl/l, el, tl,
   stuks naar boven afgerond, overige eenheden apart: "600 g + 2 blikjes"). Per afdeling (groente & fruit, vlees & vis,
   zuivel, brood, voorraadkast, kruiden & sauzen, overig). Basis (zout, peper, olie, water) en wat bij In huis
   aangetikt staat → "Heb je al". "Naar smaak" en "optioneel" komen wél op de lijst. Delen als tekst.
-- **6b** opslag en schermen: Room v5 (recepten op de lijst met porties, eigen items, afgevinkt), segment Boodschappen,
+- **6b** opslag en schermen: Room v5 (recepten op de lijst met porties, eigen items, afgevinkt), tabblad Lijst (scherm Boodschappen),
   "Op de lijst" op het receptscherm (met de gekozen porties), en vanaf In huis een recept met één tik op de lijst.
   Niet in de `.eazy`-back-up (de lijst is tijdelijk).
 
 ## Open vragen
-- Welke sites naast leukerecepten.nl en eefkooktzo.nl voor Ontdekken?

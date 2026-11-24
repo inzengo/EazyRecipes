@@ -61,8 +61,9 @@ import nl.eazyrecipes.ui.theme.Eazy
 
 enum class HomeTab(val label: String, @DrawableRes val icon: Int) {
     LIBRARY("Recepten", R.drawable.ph_books),
-    PANTRY("Keuken", R.drawable.ph_basket),
-    DISCOVER("Ontdek", R.drawable.ph_compass),
+    PANTRY("In huis", R.drawable.ph_basket),
+    // "Boodschappen" is te lang: dan valt "Meer" van de balk (zie screenshot 02d). Het scherm zelf heet wel zo.
+    SHOPPING("Lijst", R.drawable.ph_list),
     MORE("Meer", R.drawable.ph_dots),
 }
 
@@ -73,6 +74,10 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onImport: (String) -> Unit,
     pantry: @Composable () -> Unit,
+    shopping: @Composable () -> Unit = {},
+    /** Aantal dat je nog moet halen: als getal op het boodschappen-icoon. */
+    toBuy: Int = 0,
+    initialTab: HomeTab = HomeTab.LIBRARY,
     onOpenCategories: () -> Unit = {},
     onOpenLabels: () -> Unit = {},
     onOpenFile: (android.net.Uri) -> Unit = {},
@@ -82,7 +87,7 @@ fun HomeScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var tab by rememberSaveable { mutableStateOf(HomeTab.LIBRARY) }
+    var tab by rememberSaveable { mutableStateOf(initialTab) }
     var addOpen by rememberSaveable { mutableStateOf(false) }
     // Wat er in "link plakken" stond toen het venster (per ongeluk) dicht ging; leeg na een import.
     var draft by rememberSaveable { mutableStateOf("") }
@@ -106,7 +111,11 @@ fun HomeScreen(
 
     // De navigatie en +-knop kleuren mee met de gekozen categorie, zoals de kop.
     val tile = tileContext(state?.filter?.category)
-    val accent = if (tab == HomeTab.LIBRARY && tile != Eazy.Alles) tile.vivid else Eazy.Brand
+    val accent = when {
+        tab == HomeTab.LIBRARY && tile != Eazy.Alles -> tile.vivid
+        tab == HomeTab.SHOPPING -> Eazy.Snel.vivid
+        else -> Eazy.Brand
+    }
 
     Box(Modifier.fillMaxSize().background(Eazy.Grey)) {
         when (tab) {
@@ -123,10 +132,10 @@ fun HomeScreen(
                 onQuery = library::onQueryChange,
             )
             HomeTab.PANTRY -> pantry()
-            HomeTab.DISCOVER -> DiscoverScreen()
+            HomeTab.SHOPPING -> shopping()
             HomeTab.MORE -> MoreScreen(onOpenCategories, onOpenLabels, onOpenFile)
         }
-        BottomNav(tab, accent, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
+        BottomNav(tab, accent, toBuy, onSelect = { tab = it }, onAdd = { addOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
     }
 
     if (addOpen) {
@@ -163,7 +172,7 @@ private fun newCameraUri(context: android.content.Context): android.net.Uri {
 }
 
 @Composable
-private fun BottomNav(selected: HomeTab, accent: Color, onSelect: (HomeTab) -> Unit, onAdd: () -> Unit, modifier: Modifier) {
+private fun BottomNav(selected: HomeTab, accent: Color, toBuy: Int, onSelect: (HomeTab) -> Unit, onAdd: () -> Unit, modifier: Modifier) {
     Row(
         modifier.fillMaxWidth().navigationBarsPadding().padding(start = 14.dp, end = 14.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -188,8 +197,20 @@ private fun BottomNav(selected: HomeTab, accent: Color, onSelect: (HomeTab) -> U
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Ico(t.icon, 22.dp, contentDescription = if (on) null else t.label)
-                        if (on) Text(t.label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold))
+                        val count = if (t == HomeTab.SHOPPING && toBuy > 0) toBuy else null
+                        Box {
+                            Ico(t.icon, 22.dp, contentDescription = if (on) null else t.label + (count?.let { ", $it te halen" } ?: ""))
+                            // Hoeveel je nog moet halen, klein op het icoon (alleen als de knop niet actief is; dan staat het in de kop).
+                            if (count != null && !on) {
+                                Box(
+                                    Modifier.align(Alignment.TopEnd).offset(x = 9.dp, y = (-7).dp).clip(CircleShape).background(Eazy.Snel.vivid)
+                                        .padding(horizontal = 5.dp),
+                                ) {
+                                    Text(if (count > 99) "99+" else "$count", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = Eazy.Ink)
+                                }
+                            }
+                        }
+                        if (on) Text(t.label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold), maxLines = 1)
                     }
                 }
             }
@@ -206,9 +227,9 @@ private fun BottomNav(selected: HomeTab, accent: Color, onSelect: (HomeTab) -> U
     }
 }
 
-/** Gekleurde kop met watermerk-icoon (In huis, Ontdek). */
+/** Gekleurde kop met watermerk-icoon (In huis, Boodschappen). */
 @Composable
-fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, badge: String? = null, header: (@Composable () -> Unit)? = null) {
+fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, badge: String? = null) {
     Box(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp)).background(color)
     ) {
@@ -221,7 +242,6 @@ fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, 
             Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            header?.let { Box(Modifier.padding(bottom = 8.dp)) { it() } }
             badge?.let {
                 Text(
                     it, style = MaterialTheme.typography.labelSmall, color = Eazy.Paper,
@@ -230,45 +250,6 @@ fun ColorHero(color: Color, @DrawableRes icon: Int, title: String, sub: String, 
             }
             Text(title, style = MaterialTheme.typography.displaySmall)
             Text(sub, style = MaterialTheme.typography.labelLarge, color = Eazy.Ink.copy(alpha = 0.8f))
-        }
-    }
-}
-
-private val DiscoverBlue = Color(0xFF4D9DFF)
-
-@Composable
-private fun DiscoverScreen() {
-    Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            ColorHero(DiscoverBlue, R.drawable.ph_compass, "Ontdek\nnieuwe recepten", "Zoek op je favoriete sites en bewaar met één tik.", badge = "Latere fase")
-            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SiteRow("L", Color(0xFFFFC738), "leukerecepten.nl", "Werkt al via Delen of plakken")
-                SiteRow("E", Color(0xFFFF8AD4), "eefkooktzo.nl", "Werkt al via Delen of plakken")
-                Text(
-                    "Straks kun je hier zoeken in deze sites zonder de browser te openen. Tot die tijd: deel een recept vanuit je browser naar EazyRecipes.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Eazy.Muted,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-        }
-        StatusBarBackdrop(DiscoverBlue)
-    }
-}
-
-@Composable
-private fun SiteRow(letter: String, color: Color, name: String, note: String) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Eazy.Paper).padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(color), contentAlignment = Alignment.Center) {
-            Text(letter, style = MaterialTheme.typography.headlineSmall)
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(name, style = MaterialTheme.typography.titleMedium)
-            Text(note, style = MaterialTheme.typography.bodySmall, color = Eazy.Muted)
         }
     }
 }

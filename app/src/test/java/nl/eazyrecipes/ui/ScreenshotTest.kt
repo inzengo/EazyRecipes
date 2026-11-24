@@ -176,6 +176,21 @@ class ScreenshotTest {
         }
     }
 
+    /** Past "Boodschappen" in de navigatie als die knop actief is? En het getal op het icoon als hij dat niet is. */
+    @Test fun nav_shopping_active() {
+        val vm = LibraryViewModel(repo) { 0 }
+        shot("02d-nav-shopping") {
+            HomeScreen(vm, {}, {}, pantry = {}, toBuy = 12, initialTab = nl.eazyrecipes.ui.home.HomeTab.SHOPPING)
+        }
+    }
+
+    @Test fun nav_pantry_active() {
+        val vm = LibraryViewModel(repo) { 0 }
+        shot("02e-nav-pantry") {
+            HomeScreen(vm, {}, {}, pantry = {}, toBuy = 12, initialTab = nl.eazyrecipes.ui.home.HomeTab.PANTRY)
+        }
+    }
+
     private val pantryActions = nl.eazyrecipes.ui.pantry.PantryActions({}, {}, {}, {}, {})
 
     private val pantryRecipes by lazy {
@@ -197,12 +212,11 @@ class ScreenshotTest {
     }
 
     @Config(qualifiers = "w393dp-h1400dp-xxhdpi")
-    @Test fun kitchen_pantry_with_switch() = shot("08c-kitchen-pantry") {
+    @Test fun pantry_with_list_buttons() = shot("08c-pantry-list-buttons") {
         val sel = nl.eazyrecipes.ui.pantry.PantrySelection(setOf("ui", "knoflook", "eieren", "tomaat", "paprika"))
         nl.eazyrecipes.ui.pantry.PantryScreen(
             nl.eazyrecipes.ui.pantry.pantryState(pantryRecipes, sel),
             nl.eazyrecipes.ui.pantry.PantryActions({}, {}, {}, {}, {}, addToList = {}),
-            header = { nl.eazyrecipes.ui.shopping.KitchenSwitch(nl.eazyrecipes.ui.shopping.KitchenPart.PANTRY, 9) {} },
             onList = setOf(pantryRecipes[1].recipe.id),
         )
     }
@@ -223,7 +237,6 @@ class ScreenshotTest {
         )
         nl.eazyrecipes.ui.shopping.ShoppingScreen(
             state, shoppingActions,
-            header = { nl.eazyrecipes.ui.shopping.KitchenSwitch(nl.eazyrecipes.ui.shopping.KitchenPart.SHOPPING, state.toBuy) {} },
             expanded = true,
         )
     }
@@ -231,7 +244,6 @@ class ScreenshotTest {
     @Test fun shopping_empty() = shot("13b-shopping-empty") {
         nl.eazyrecipes.ui.shopping.ShoppingScreen(
             nl.eazyrecipes.shopping.ShoppingList.build(emptyList()), shoppingActions,
-            header = { nl.eazyrecipes.ui.shopping.KitchenSwitch(nl.eazyrecipes.ui.shopping.KitchenPart.SHOPPING, 0) {} },
         )
     }
 
