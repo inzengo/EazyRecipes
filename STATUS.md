@@ -1,6 +1,6 @@
 # Status — EazyRecipes
 
-_Laatst bijgewerkt: 2026-11-22_
+_Laatst bijgewerkt: 2026-11-24_
 
 ## Waar staan we
 
@@ -11,7 +11,7 @@ _Laatst bijgewerkt: 2026-11-22_
 | 2 — Data + import | ✅ klaar |
 | 3 — Bibliotheek & vinden | ✅ klaar (3a, 3b, 3c) — nog niet op telefoon getest |
 | 4 — Koken, ordenen & delen | ✅ klaar (4a–4e) — **nog niet op de telefoon getest** |
-| 5 — Overige import | 🚧 zelf invoeren, meerdere links, bladwijzers klaar; **foto/OCR volgende** |
+| 5 — Overige import | ✅ klaar (zelf invoeren, meerdere links, bladwijzers, foto/OCR) — **nog niet op de telefoon getest** |
 | 3–5 en later | zie [PLAN.md](PLAN.md) |
 
 ## Wat er nu is
@@ -25,7 +25,7 @@ _Laatst bijgewerkt: 2026-11-22_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 117 tests, alle groen. Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 137 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -138,11 +138,13 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
   - **Zelf invoeren:** in "Recept toevoegen" → "Geen link? Voer een recept zelf in" (lege editor), en bij "Geen recept gevonden" de knop "Zelf invoeren" (link wordt bron).
   - **Meerdere links:** plak een lijst in "Recept toevoegen" (Enter = nieuwe regel, "Plakken" neemt alle links mee) → wachtrij (`importer/BatchImport.kt`): één voor één ophalen en meteen opslaan, voortgangsscherm met openen per recept en "mislukte opnieuw". Bestaande recepten worden overgeslagen. De wachtrij leeft in het geheugen (weg als Android de app afsluit).
   - **Bladwijzers:** Meer → "Bladwijzers importeren" → HTML-export van Chrome/Firefox/Safari (`importer/Bookmarks.kt`) → kiezen per map (met zoeken; wat je al hebt staat uit) → wachtrij.
+  - **Importopties onder de +-knop** (`8f9b7f7`): link plakken, zelf invoeren, bladwijzers en `.eazy`-bestand op één plek.
+  - **Foto/OCR** (`c8a4341`, v0.6.0): +-knop → camera of tot 5 afbeeldingen uit de galerij (kookboekpagina's, screenshots). ML Kit tekstherkenning (gebundeld, offline) leest de tekst buiten de hoofdthread, verkleind tot 2500 px. `importer/PhotoRecipeParser.kt` deelt in: titel, porties, tijd, ingrediënten, stappen → bestaande editor om na te kijken. Er gaat geen OCR-regel verloren. APK alleen voor `arm64-v8a` om het ML Kit-model klein te houden.
 
 ## Volgende stap
 
-1. **Alles op de telefoon testen** (fase 3 + 4). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten.
-2. **Fase 5 rest: foto/OCR** (ML Kit tekstherkenning op het toestel: foto van een kookboek of screenshot → tekst indelen in titel, ingrediënten en stappen → bestaande editor).
+1. **Alles op de telefoon testen** (fase 3–5, APK v0.6.0). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
+2. Bevindingen van de test oplossen, daarna de volgende fase kiezen uit [PLAN.md](PLAN.md#later).
 
 ## Open punten
 
