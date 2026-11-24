@@ -1,4 +1,4 @@
-﻿# Status — EazyRecipes
+# Status — EazyRecipes
 
 _Laatst bijgewerkt: 2026-11-24_
 
