@@ -1,4 +1,4 @@
-# Status — EazyRecipes
+﻿# Status — EazyRecipes
 
 _Laatst bijgewerkt: 2026-11-24_
 
@@ -25,7 +25,7 @@ _Laatst bijgewerkt: 2026-11-24_
   - `JsonLdRecipeParser` (HTML → `ParsedRecipe`), ISO-duur → minuten, en `MainIngredientGuesser` (eerste gok voor vlees/vis/vega/vegan/zoet).
   - `RecipeImporter`: link → recept. Eerst HTTP (`HttpPageFetcher`, OkHttp). Bij 401/403/429/503, of als de HTML geen recept bevat, gaat hij via `WebViewPageFetcher` (onzichtbare WebView, voor Cloudflare-sites zoals eefkooktzo.nl). Haalt `utm_*`/`fbclid`/… uit de link.
   - `ImageStore`: slaat de receptfoto lokaal op (max. 15 MB, alleen `image/*`).
-- **Tests:** `./gradlew testDebugUnitTest`, 137 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
+- **Tests:** `./gradlew testDebugUnitTest`, 138 tests, alle groen (2026-11-24). Ze testen op twee echte leukerecepten.nl-pagina's (`app/src/test/resources/pages/`, ingekort tot de JSON-LD) en een reeks varianten van andere sites. De database wordt getest met Robolectric.
 - **Schermen (Compose, design v0.2):**
   - Bibliotheek: grote kop, masonry-raster met kaarten, lege toestand, +-knop → "link plakken" (vult zelf in vanaf het klembord).
   - Importscherm: ophalen → voorbeeld waarin alles bewerkbaar is (soort, titel, tijd, porties, ingrediënten, stappen) → opslaan. Bij een link die al bestaat verschijnt een melding "staat al in je bibliotheek".
@@ -131,7 +131,7 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
 
 - **4e** delen & back-up (`share/`):
   - `.eazy` = ZIP met `eazy.json` (versie 1: recepten, categorieën, labels, collecties) + `images/`. Lezen met grenzen (grootte per onderdeel en totaal, JSON-diepte, tekstlengtes, aantallen), ids alleen `[A-Za-z0-9-]`, links alleen http(s). Zie `EazyFile.kt`.
-  - Receptscherm → deelknop: als tekst (met gekozen porties) of als `.eazy`. Collectie-menu → "Delen als bestand". Meer → "Back-up maken" (jij kiest waar) en "Bestand openen".
+  - Receptscherm → deelknop: als tekst (met gekozen porties) of als `.eazy`. Discord verstuurt berichten boven 2000 tekens stilletjes niet; Discord krijgt daarom via `EXTRA_REPLACEMENT_EXTRAS` een ingekorte tekst (`RecipeText.fit`, op een hele regel, met bronlink). Andere apps krijgen het hele recept (v0.6.1). Collectie-menu → "Delen als bestand". Meer → "Back-up maken" (jij kiest waar) en "Bestand openen".
   - Openen (ook via "Openen met"/"Delen" vanuit een andere app, alleen `content://`): voorbeeld → importeren. Dubbele recepten (zelfde id of bronlink) worden overgeslagen; categorieën op id/naam gekoppeld of aangemaakt; labels op naam; collecties op naam samengevoegd. Import en back-up lopen in `appScope` door als je het scherm verlaat; mislukt een import, dan blijven er geen losse foto's achter.
 
 - **Fase 5 (deel)** overige import:
@@ -143,7 +143,7 @@ Plan met deelstappen 4a–4e staat in [PLAN.md](PLAN.md#fase-4--koken-ordenen--d
 
 ## Volgende stap
 
-1. **Alles op de telefoon testen** (fase 3–5, APK v0.6.0). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
+1. **Alles op de telefoon testen** (fase 3–5, APK v0.6.1) — getest op 2026-11-24: alles werkt, behalve tekst delen naar Discord (opgelost in 0.6.1, nog even nakijken). Aandachtspunten: zoeken (typen), porties omrekenen, foto kiezen, kookmodus + timers (scherm uit, app dicht, meldingen uit), categorieën/labels, meerdere soorten per recept, delen als tekst en als bestand (naar jezelf sturen en openen), back-up maken en terugzetten, meerdere links, bladwijzers, recept van een foto/screenshot (kookboek en schermafbeelding).
 2. Bevindingen van de test oplossen, daarna de volgende fase kiezen uit [PLAN.md](PLAN.md#later).
 
 ## Open punten

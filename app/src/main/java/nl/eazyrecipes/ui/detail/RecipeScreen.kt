@@ -442,7 +442,7 @@ private fun Detail(d: RecipeDetails, vm: RecipeViewModel, onBack: () -> Unit, on
         ShareSheet(
             onText = {
                 shareOptions = false
-                Sharing.shareText(context, r.title, RecipeText.format(d, vm.servings ?: r.servings, vm.factor))
+                Sharing.shareText(context, r.title, RecipeText.format(d, vm.servings ?: r.servings, vm.factor), r.sourceUrl)
             },
             onFile = {
                 shareOptions = false

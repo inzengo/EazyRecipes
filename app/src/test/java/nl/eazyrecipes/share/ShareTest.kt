@@ -199,4 +199,34 @@ class ShareTest {
         )
         assertEquals("Kip kerrie", Sharing.safeName("Kip / kerrie"))
     }
+
+    @Test
+    fun `lange tekst wordt ingekort voor Discord`() {
+        val long = (1..200).joinToString("\n") { "$it. Roer de saus nog een minuut door." } // ruim 7000 tekens
+        val url = "https://example.nl/kip-kerrie"
+
+        val short = RecipeText.fit(long, 2000, url)
+        assertTrue(short.length <= 2000)
+        assertTrue(short.startsWith("1. Roer"))
+        // Afgekapt op een hele regel, met uitleg en de bronlink.
+        val kept = short.substringBefore("\n…")
+        assertTrue(kept.lines().all { it.endsWith("door.") })
+        assertTrue(short.endsWith("Het hele recept: $url"))
+        // Zonder bron: verwijzing naar delen als bestand.
+        assertTrue(RecipeText.fit(long, 2000, null).endsWith("Deel als bestand voor het hele recept."))
+        // Korte tekst blijft gelijk.
+        assertEquals("Kort recept", RecipeText.fit("Kort recept", 2000, url))
+
+        // Het deelmenu geeft Discord de ingekorte tekst; de gewone tekst blijft voor de rest.
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val newTask = object : android.content.ContextWrapper(app) {
+            override fun startActivity(intent: android.content.Intent) = app.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        Sharing.shareText(newTask, "Kip kerrie", long, url)
+        val chooser = org.robolectric.Shadows.shadowOf(app).nextStartedActivity
+        val inner = chooser.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)!!
+        assertEquals(long, inner.getStringExtra(android.content.Intent.EXTRA_TEXT))
+        val discord = chooser.getBundleExtra(android.content.Intent.EXTRA_REPLACEMENT_EXTRAS)!!.getBundle("com.discord")!!
+        assertEquals(short, discord.getString(android.content.Intent.EXTRA_TEXT))
+    }
 }

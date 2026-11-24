@@ -3,6 +3,7 @@ package nl.eazyrecipes.share
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import androidx.core.content.FileProvider
 import android.widget.Toast
 import kotlinx.coroutines.CancellationException
@@ -15,11 +16,20 @@ import java.time.LocalDate
 /** Delen via het Android-deelmenu (WhatsApp, mail, Drive, …). */
 object Sharing {
 
-    fun shareText(context: Context, subject: String, text: String) {
+    /** Apps die een bericht boven hun limiet stilletjes niet versturen: die krijgen een ingekorte tekst. */
+    internal val messageLimits = mapOf("com.discord" to 2000)
+
+    fun shareText(context: Context, subject: String, text: String, sourceUrl: String? = null) {
         val send = Intent(Intent.ACTION_SEND).setType("text/plain")
             .putExtra(Intent.EXTRA_SUBJECT, subject)
             .putExtra(Intent.EXTRA_TEXT, text)
-        context.startActivity(Intent.createChooser(send, "Recept delen"))
+        val perApp = Bundle()
+        messageLimits.forEach { (pkg, limit) ->
+            if (text.length > limit) perApp.putBundle(pkg, Bundle().apply { putString(Intent.EXTRA_TEXT, RecipeText.fit(text, limit, sourceUrl)) })
+        }
+        val chooser = Intent.createChooser(send, "Recept delen")
+        if (!perApp.isEmpty) chooser.putExtra(Intent.EXTRA_REPLACEMENT_EXTRAS, perApp)
+        context.startActivity(chooser)
     }
 
     /** Schrijft een `.eazy` in de cache en opent het deelmenu ermee. Mislukt het, dan een melding (geen crash). */
