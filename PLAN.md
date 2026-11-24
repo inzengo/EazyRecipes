@@ -182,5 +182,16 @@ zodat het `.eazy`-formaat en de back-up meteen de nieuwe velden bevatten en we h
 
 Daarna: boodschappenlijst, Ontdekken, delen B → C.
 
+### Fase 6 — Boodschappenlijst
+Besluit 2026-11-24: het tabblad "In huis" wordt **Keuken**, met bovenaan In huis | Boodschappen.
+- **6a** logica (`shopping/`): recepten + porties → één lijst. Gelijke ingrediënten samen (enkel-/meervoud: ui/uien,
+  tomaat/tomaten; "koude boter", "boter of margarine" = boter), opgeteld per soort eenheid (g/kg, ml/dl/l, el, tl,
+  stuks naar boven afgerond, overige eenheden apart: "600 g + 2 blikjes"). Per afdeling (groente & fruit, vlees & vis,
+  zuivel, brood, voorraadkast, kruiden & sauzen, overig). Basis (zout, peper, olie, water) en wat bij In huis
+  aangetikt staat → "Heb je al". "Naar smaak" en "optioneel" komen wél op de lijst. Delen als tekst.
+- **6b** opslag en schermen: Room v5 (recepten op de lijst met porties, eigen items, afgevinkt), segment Boodschappen,
+  "Op de lijst" op het receptscherm (met de gekozen porties), en vanaf In huis een recept met één tik op de lijst.
+  Niet in de `.eazy`-back-up (de lijst is tijdelijk).
+
 ## Open vragen
 - Welke sites naast leukerecepten.nl en eefkooktzo.nl voor Ontdekken?

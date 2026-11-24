@@ -122,6 +122,10 @@ object PantryMatcher {
     private fun PantryLine.isCovered(selected: Set<String>, custom: List<List<String>>): Boolean =
         items.any { it in selected } || custom.any { tokens.containsPhrase(it, prefixLast = true) }
 
+    /** Heb je [line] in huis, met deze keuze uit "In huis"? (Voor de boodschappenlijst.) */
+    fun covers(line: PantryLine, selected: Set<String>, custom: List<String>): Boolean =
+        line.isCovered(selected, custom.map(::pantryTokens).filter { it.isNotEmpty() })
+
     /**
      * De beste recepten bij wat je in huis hebt: minstens één treffer, hoogste aandeel eerst, dan meeste treffers.
      */
